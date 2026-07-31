@@ -140,6 +140,9 @@ jobs:
     runs-on:
       group: swm-ci
       labels: ${{ matrix.runner }}
+    defaults:
+      run:
+        shell: bash
     timeout-minutes: 20
     needs: [quality, security]
     if: github.event_name != 'pull_request'
