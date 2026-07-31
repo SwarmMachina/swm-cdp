@@ -282,6 +282,9 @@ jobs:
       - name: Install
         run: pnpm install --frozen-lockfile --ignore-scripts
 
+      - name: Build package
+        run: pnpm run build
+
       - name: Pack tested artifact
         run: mkdir -p package-artifacts && pnpm pack --pack-destination package-artifacts
 
@@ -291,7 +294,7 @@ jobs:
           tgz="$(find "$GITHUB_WORKSPACE/package-artifacts" -name '*.tgz' -type f -print -quit)"
           test -n "$tgz"
           mkdir consumer
-          cp .test-dist/test/installed-smoke.js consumer/smoke.mjs
+          cp test/installed-smoke.ts consumer/smoke.mjs
           cd consumer
           npm init -y
           npm install "$tgz" --omit=dev --ignore-scripts

@@ -5,6 +5,9 @@ nodeLinker: isolated
 strictPeerDependencies: true
 autoInstallPeers: false
 
+overrides:
+  brace-expansion: 5.0.8
+
 minimumReleaseAgeExclude:
   - '@swarmmachina/*'
   - prettier@3.9.6
