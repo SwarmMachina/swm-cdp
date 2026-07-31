@@ -61,7 +61,7 @@ runs:
         if test "$RUNNER_OS" != 'Windows'; then
           chmod +x "$executable"
         fi
-        actual_version="$("$executable" --version)"
+        actual_version="$("$executable" --version | sed 's/[[:space:]]*$//')"
         test "$actual_version" = "Google Chrome for Testing $version"
         echo "$actual_version"
         if test "$RUNNER_OS" = 'Windows'; then
