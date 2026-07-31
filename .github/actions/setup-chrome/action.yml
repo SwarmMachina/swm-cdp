@@ -61,9 +61,17 @@ runs:
         if test "$RUNNER_OS" != 'Windows'; then
           chmod +x "$executable"
         fi
-        actual_version="$("$executable" --version | sed 's/[[:space:]]*$//')"
-        test "$actual_version" = "Google Chrome for Testing $version"
-        echo "$actual_version"
+        if test "$RUNNER_OS" = 'Windows'; then
+          # Chrome is a GUI executable on Windows: `chrome.exe --version` does
+          # not write to stdout and can remain running. The archive hash above
+          # already verifies the exact pinned Chrome build.
+          test -f "$executable"
+          echo "Google Chrome for Testing $version"
+        else
+          actual_version="$("$executable" --version | sed 's/[[:space:]]*$//')"
+          test "$actual_version" = "Google Chrome for Testing $version"
+          echo "$actual_version"
+        fi
         if test "$RUNNER_OS" = 'Windows'; then
           executable="$(cygpath -w "$executable")"
         fi
