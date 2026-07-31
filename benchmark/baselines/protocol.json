@@ -1,0 +1,52 @@
+{
+  "schemaVersion": "regression-ci-baseline/v1",
+  "suite": "protocol",
+  "benchmark": {
+    "name": "swm-cdp protocol hot path",
+    "packageName": "@swarmmachina/swm-cdp",
+    "packageVersion": "0.1.0",
+    "runner": "swm-ci/bench",
+    "script": "pnpm run profile:ci",
+    "framework": "swm-cdp"
+  },
+  "calibration": {
+    "status": "pending",
+    "updatedAt": "pending",
+    "node": "24.x",
+    "ciRunner": "swm-ci/bench",
+    "note": "Dedicated runner calibration has not been completed. No thresholds are enforced yet."
+  },
+  "parameters": {
+    "connections": 1,
+    "iterations": 50000,
+    "warmup": 5000,
+    "requestPipelining": 128
+  },
+  "metrics": {
+    "operationsPerSecond": {
+      "label": "Throughput",
+      "unit": "ops/s"
+    },
+    "p95": {
+      "label": "p95 latency",
+      "unit": "ms"
+    },
+    "p99": {
+      "label": "p99 latency",
+      "unit": "ms"
+    },
+    "elu": {
+      "label": "Event-loop utilization",
+      "unit": "%"
+    },
+    "heapDelta": {
+      "label": "Heap delta",
+      "unit": "MiB"
+    },
+    "rssDelta": {
+      "label": "RSS delta",
+      "unit": "MiB"
+    }
+  },
+  "tests": {}
+}

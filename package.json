@@ -1,0 +1,84 @@
+{
+  "name": "@swarmmachina/swm-cdp",
+  "version": "0.1.0",
+  "description": "Low-level Chrome DevTools Protocol runtime for SwarmMachina.",
+  "keywords": [
+    "chrome",
+    "chromium",
+    "cdp",
+    "devtools",
+    "swarmmachina"
+  ],
+  "type": "module",
+  "packageManager": "pnpm@11.15.1",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "sideEffects": false,
+  "license": "MPL-2.0",
+  "author": "SwarmMachina Team",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/SwarmMachina/swm-cdp.git"
+  },
+  "homepage": "https://github.com/SwarmMachina/swm-cdp#readme",
+  "bugs": {
+    "url": "https://github.com/SwarmMachina/swm-cdp/issues"
+  },
+  "engines": {
+    "node": "^22.13.0 || 24.x"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./discovery": {
+      "types": "./dist/discovery.d.ts",
+      "import": "./dist/discovery.js"
+    }
+  },
+  "files": [
+    "dist/",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "node --experimental-strip-types scripts/clean-dist.ts && tsc -p tsconfig.json && node --experimental-strip-types scripts/copy-generated-types.ts",
+    "build:test": "tsc -p tsconfig.test.json",
+    "bench:protocol": "pnpm run build:test && node --expose-gc .test-dist/benchmark/protocol.js",
+    "bench:chrome": "pnpm run build:test && node --expose-gc .test-dist/benchmark/chrome.js",
+    "profile:ci": "pnpm run build:test && node --expose-gc --cpu-prof --cpu-prof-dir=benchmark/profiles .test-dist/benchmark/protocol.js --iterations 50000 --warmup 5000 --concurrency 128",
+    "check": "prettier . --check && eslint . && pnpm run check:types && pnpm run source-policy",
+    "check:types": "tsc --noEmit -p tsconfig.json && tsc -p tsconfig.scripts.json && tsc -p tsconfig.benchmark.json && tsc -p test/types/tsconfig.json",
+    "test:coverage": "pnpm run build:test && node --test --experimental-test-coverage --test-coverage-exclude='**/node_modules/**' --test-coverage-exclude='**/benchkit/**' --test-coverage-lines=80 --test-coverage-branches=75 --test-coverage-functions=75 .test-dist/test/unit/*.test.js",
+    "test:leak": "pnpm run build:test && node --expose-gc --test .test-dist/test/leak/*.test.js",
+    "fix": "eslint . --fix && prettier . --write",
+    "test:unit": "pnpm run build:test && node --test .test-dist/test/unit/*.test.js",
+    "test:types": "tsc -p test/types/tsconfig.json",
+    "test:e2e": "pnpm run build:test && node --test --test-concurrency=1 .test-dist/test/e2e/*.test.js",
+    "test:e2e:container": "pnpm run build:test && node --test --test-concurrency=1 .test-dist/test/e2e/container-*.test.js",
+    "test": "pnpm run test:unit",
+    "release:gate": "pnpm run check && pnpm run test:unit && pnpm run test:types && pnpm run test:leak && pnpm run profile:ci && pnpm run build",
+    "source-policy": "node --experimental-strip-types scripts/source-policy.ts",
+    "prepublishOnly": "pnpm run release:gate"
+  },
+  "devDependencies": {
+    "@swarmmachina/benchkit": "0.3.0",
+    "@swarmmachina/standards": "3.1.0",
+    "@types/node": "24.10.1",
+    "@typescript/native": "npm:typescript@7.0.2",
+    "chrome-remote-interface": "^0.34.0",
+    "devtools-protocol": "^0.0.1663043",
+    "eslint": "10.7.0",
+    "prettier": "3.9.6",
+    "typescript": "npm:@typescript/typescript6@6.0.2",
+    "typescript-eslint": "8.65.0"
+  },
+  "prettier": "@swarmmachina/standards/prettier",
+  "publishConfig": {
+    "access": "public"
+  },
+  "swmStandards": {
+    "preset": "typescript"
+  }
+}

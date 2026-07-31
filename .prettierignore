@@ -1,0 +1,8 @@
+node_modules/
+dist/
+.test-dist/
+src/generated/
+tmp/
+temp/
+*.log
+coverage/

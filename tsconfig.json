@@ -1,0 +1,11 @@
+{
+  "extends": "@swarmmachina/standards/tsconfig",
+  "compilerOptions": {
+    "lib": ["ES2024", "DOM"],
+    "noEmitOnError": true,
+    "outDir": "dist",
+    "rootDir": "src",
+    "types": ["node"]
+  },
+  "include": ["src/**/*.ts"]
+}

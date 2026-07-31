@@ -1,0 +1,13 @@
+{
+  "extends": "@swarmmachina/standards/tsconfig",
+  "compilerOptions": {
+    "lib": ["ES2024", "DOM"],
+    "noEmit": true,
+    "paths": {
+      "@swarmmachina/swm-cdp": ["../../src/index.ts"],
+      "@swarmmachina/swm-cdp/discovery": ["../../src/discovery.ts"]
+    },
+    "types": ["node"]
+  },
+  "include": ["public-api.ts"]
+}

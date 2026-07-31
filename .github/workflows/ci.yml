@@ -1,0 +1,339 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - master
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  quality:
+    name: Quality / Node.js ${{ matrix.node-version }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        node-version: ['22', '24']
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+
+      - name: Setup Node.js
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6
+        with:
+          node-version: ${{ matrix.node-version }}
+
+      - name: Enable pnpm
+        run: corepack enable
+
+      - name: Verify tag matches package version
+        if: startsWith(github.ref, 'refs/tags/v')
+        shell: bash
+        run: |
+          tag_version="${GITHUB_REF_NAME#v}"
+          package_version="$(node -p "require('./package.json').version")"
+          test "$tag_version" = "$package_version"
+
+      - name: Install
+        run: pnpm install --frozen-lockfile --ignore-scripts
+
+      - name: Source policy
+        run: pnpm run source-policy
+
+      - name: Release gate
+        run: pnpm run release:gate
+
+      - name: Coverage thresholds
+        if: matrix.node-version == '24'
+        run: pnpm run test:coverage
+
+  security:
+    name: Dependency security
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+
+      - name: Setup Node.js
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6
+        with:
+          node-version: '24'
+
+      - name: Enable pnpm
+        run: corepack enable
+
+      - name: Install
+        run: pnpm install --frozen-lockfile --ignore-scripts
+
+      - name: Audit dependency tree
+        run: pnpm audit --audit-level=high
+
+  chrome-e2e-container:
+    name: Chrome e2e / Docker / Node.js 24
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    needs: [quality, security]
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+
+      - name: Setup Node.js
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6
+        with:
+          node-version: '24'
+
+      - name: Enable pnpm
+        run: corepack enable
+
+      - name: Install
+        run: pnpm install --frozen-lockfile --ignore-scripts
+
+      - name: Start pinned headless Chrome container
+        run: |
+          docker run --detach --name swm-cdp-chrome \
+            --publish 127.0.0.1:9222:9222 \
+            --shm-size 1g \
+            --volume "$GITHUB_WORKSPACE:/workspace:ro" \
+            --env SWM_CDP_BROWSER_PATH=/home/pptruser/.cache/puppeteer/chrome/linux-150.0.7871.24/chrome-linux64/chrome \
+            --entrypoint node \
+            ghcr.io/puppeteer/puppeteer:25.3.0@sha256:9665f5b57abc5cc7080a641878964018de219055a4d2c9d8d050ceb1161778ba \
+            --experimental-strip-types \
+            /workspace/scripts/chrome-container.ts
+          for attempt in $(seq 1 60); do
+            if curl --fail --silent http://127.0.0.1:9222/json/version >/dev/null; then
+              exit 0
+            fi
+            sleep 1
+          done
+          docker logs swm-cdp-chrome
+          exit 1
+
+      - name: Public API e2e against container Chrome
+        env:
+          SWM_CDP_CONTAINER_CHROME: http://127.0.0.1:9222
+        run: pnpm run test:e2e:container
+
+      - name: Stop Chrome container
+        if: always()
+        run: docker rm --force swm-cdp-chrome || true
+
+  chrome-e2e-local:
+    name: Chrome e2e / ${{ matrix.runner }} / Node.js 24
+    runs-on:
+      group: swm-ci
+      labels: ${{ matrix.runner }}
+    timeout-minutes: 20
+    needs: [quality, security]
+    if: github.event_name != 'pull_request'
+    strategy:
+      fail-fast: false
+      matrix:
+        runner: [Linux, Windows]
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+
+      - name: Setup Node.js
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6
+        with:
+          node-version: '24'
+
+      - name: Enable pnpm
+        run: corepack enable
+
+      - name: Install
+        run: pnpm install --frozen-lockfile --ignore-scripts
+
+      - name: Platform unit tests
+        run: pnpm run test:unit
+
+      - name: Setup pinned Chrome for Testing
+        id: chrome
+        uses: ./.github/actions/setup-chrome
+
+      - name: Headless Chrome e2e
+        env:
+          CHROME_PATH: ${{ steps.chrome.outputs.executable }}
+          SWM_CDP_E2E_REQUIRED: '1'
+        run: pnpm run test:e2e
+
+  chrome-e2e-macos:
+    name: Chrome e2e / macOS / Node.js 24
+    runs-on: macos-latest
+    timeout-minutes: 20
+    needs: [quality, security]
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+
+      - name: Setup Node.js
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6
+        with:
+          node-version: '24'
+
+      - name: Enable pnpm
+        run: corepack enable
+
+      - name: Install
+        run: pnpm install --frozen-lockfile --ignore-scripts
+
+      - name: Platform unit tests
+        run: pnpm run test:unit
+
+      - name: Setup pinned Chrome for Testing
+        id: chrome
+        uses: ./.github/actions/setup-chrome
+
+      - name: Headless Chrome e2e
+        env:
+          CHROME_PATH: ${{ steps.chrome.outputs.executable }}
+          SWM_CDP_E2E_REQUIRED: '1'
+        run: pnpm run test:e2e
+
+  benchmark:
+    name: Protocol and Chrome baseline measurements
+    runs-on:
+      group: swm-ci
+      labels: bench
+    timeout-minutes: 20
+    needs: [chrome-e2e-local, chrome-e2e-macos]
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+
+      - name: Setup Node.js
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6
+        with:
+          node-version: '24'
+
+      - name: Enable pnpm
+        run: corepack enable
+
+      - name: Install
+        run: pnpm install --frozen-lockfile --ignore-scripts
+
+      - name: Setup pinned Chrome for Testing
+        id: chrome
+        uses: ./.github/actions/setup-chrome
+
+      - name: Run protocol benchmark
+        run: pnpm run bench:protocol -- --iterations 50000 --warmup 5000 --concurrency 128 --output benchmark-results/protocol.json
+
+      - name: Run pipe and WebSocket benchmark
+        env:
+          CHROME_PATH: ${{ steps.chrome.outputs.executable }}
+        run: pnpm run bench:chrome -- --iterations 10000 --warmup 1000 --concurrency 32 --output benchmark-results/chrome.json
+
+      - name: Upload measurements
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: swm-cdp-chrome-${{ steps.chrome.outputs.version }}-${{ github.run_id }}
+          path: benchmark-results/*.json
+          if-no-files-found: error
+          retention-days: 30
+
+  package:
+    name: Build and test package
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    needs: [benchmark, chrome-e2e-container]
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+
+      - name: Setup Node.js
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6
+        with:
+          node-version: '24'
+
+      - name: Enable pnpm
+        run: corepack enable
+
+      - name: Install
+        run: pnpm install --frozen-lockfile --ignore-scripts
+
+      - name: Pack tested artifact
+        run: mkdir -p package-artifacts && pnpm pack --pack-destination package-artifacts
+
+      - name: Consumer smoke
+        shell: bash
+        run: |
+          tgz="$(find "$GITHUB_WORKSPACE/package-artifacts" -name '*.tgz' -type f -print -quit)"
+          test -n "$tgz"
+          mkdir consumer
+          cp .test-dist/test/installed-smoke.js consumer/smoke.mjs
+          cd consumer
+          npm init -y
+          npm install "$tgz" --omit=dev --ignore-scripts
+          node smoke.mjs
+
+      - name: Upload tested package
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: swm-cdp-package
+          path: package-artifacts/*.tgz
+          if-no-files-found: error
+          retention-days: 14
+
+  publish:
+    name: Publish tested package
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    needs: package
+    if: success() && startsWith(github.ref, 'refs/tags/v')
+    permissions:
+      contents: read
+      id-token: write
+
+    steps:
+      - name: Setup Node.js
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6
+        with:
+          node-version: '24'
+          registry-url: https://registry.npmjs.org
+
+      - name: Download tested package
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: swm-cdp-package
+          path: dist
+
+      - name: Bootstrap first package version
+        if: github.ref_name == 'v0.1.0'
+        run: npm publish dist/*.tgz --access public --provenance
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Publish through trusted publishing
+        if: github.ref_name != 'v0.1.0'
+        run: npm publish dist/*.tgz --access public
