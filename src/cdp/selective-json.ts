@@ -1,5 +1,4 @@
 export interface CdpEnvelope {
-  id?: number
   method?: string
   sessionId?: string
 }
@@ -53,15 +52,6 @@ export default function scanCdpEnvelope(json: string): CdpEnvelope | null {
       }
 
       index = value.end
-    } else if (key.value === 'id') {
-      const number = readNumber(json, index)
-
-      if (!number) {
-        return null
-      }
-
-      envelope.id = number.value
-      index = number.end
     } else {
       index = skipValue(json, index)
 
@@ -136,32 +126,6 @@ function readString(value: string, index: number): { end: number; value: string 
   }
 
   return null
-}
-
-function readNumber(value: string, index: number): { end: number; value: number } | null {
-  const start = index
-
-  if (value.charCodeAt(index) === 0x2d) {
-    index++
-  }
-
-  while (index < value.length) {
-    const code = value.charCodeAt(index)
-
-    if (code < 0x30 || code > 0x39) {
-      break
-    }
-
-    index++
-  }
-
-  if (index === start) {
-    return null
-  }
-
-  const number = Number(value.slice(start, index))
-
-  return Number.isSafeInteger(number) ? { end: index, value: number } : null
 }
 
 function skipValue(value: string, index: number): number {

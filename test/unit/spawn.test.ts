@@ -471,6 +471,8 @@ test('WebSocketEndpoint captures chunked loopback URL and bounds stderr state', 
   const endpoint = new WebSocketEndpoint(chrome, transportOptions({ maxEndpointBytes: 128 }))
   const waiting = endpoint.wait()
 
+  assert.equal(endpoint.wait(), waiting)
+
   chrome.stderr.emit('data', Buffer.from('noise\nDevTools listening on ws://127.0.0.1:9222/devtools/'))
   chrome.stderr.emit('data', Buffer.from('browser/id\r\n'))
   assert.equal(await waiting, 'ws://127.0.0.1:9222/devtools/browser/id')

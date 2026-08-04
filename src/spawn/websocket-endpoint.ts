@@ -6,6 +6,7 @@ const endpointPattern = /^(?:DevTools|Debugger) listening on (ws:\/\/[^\s]+)$/
 const loopbackHosts = new Set(['127.0.0.1', '[::1]'])
 
 interface EndpointWaiter {
+  promise: Promise<string>
   reject(error: Error): void
   resolve(url: string): void
   timeoutId: ReturnType<typeof setTimeout>
@@ -15,11 +16,11 @@ export default class WebSocketEndpoint {
   readonly #chromeProcess: ChromeProcessLike
   readonly #options: NormalizedLaunchOptions
   readonly #decoder = new StringDecoder('utf8')
-  readonly #waiters = new Set<EndpointWaiter>()
 
   #line = ''
   #url: string | null = null
   #error: Error | null = null
+  #waiter: EndpointWaiter | null = null
   #stderrHandlers: { data: (chunk: Buffer | Uint8Array | string) => void; end: () => void } | null = null
 
   constructor(chromeProcess: ChromeProcessLike, options: NormalizedLaunchOptions) {
@@ -44,7 +45,7 @@ export default class WebSocketEndpoint {
     )
   }
 
-  wait(timeout = this.#options.startupTimeout): Promise<string> {
+  wait(): Promise<string> {
     if (this.#url) {
       return Promise.resolve(this.#url)
     }
@@ -53,20 +54,25 @@ export default class WebSocketEndpoint {
       return Promise.reject(this.#error)
     }
 
-    const { reject, resolve, promise } = Promise.withResolvers()
+    if (this.#waiter) {
+      return this.#waiter.promise
+    }
+
+    const { reject, resolve, promise } = Promise.withResolvers<string>()
 
     const waiter: EndpointWaiter = {
+      promise,
       reject,
       resolve,
       timeoutId: setTimeout(() => {
-        this.#waiters.delete(waiter)
+        this.#waiter = null
         reject(new Error('Chrome debugging endpoint timeout exceeded'))
-      }, timeout)
+      }, this.#options.startupTimeout)
     }
 
-    this.#waiters.add(waiter)
+    this.#waiter = waiter
 
-    return promise as Promise<string>
+    return promise
   }
 
   close(): void {
@@ -171,22 +177,26 @@ export default class WebSocketEndpoint {
 
     this.#error = reason
 
-    for (const waiter of this.#waiters) {
+    const waiter = this.#waiter
+
+    if (waiter) {
       clearTimeout(waiter.timeoutId)
       waiter.reject(reason)
     }
 
-    this.#waiters.clear()
+    this.#waiter = null
     this.close()
   }
 
   #settleSuccess(value: string): void {
-    for (const waiter of this.#waiters) {
+    const waiter = this.#waiter
+
+    if (waiter) {
       clearTimeout(waiter.timeoutId)
       waiter.resolve(value)
     }
 
-    this.#waiters.clear()
+    this.#waiter = null
   }
 
   #detach(): void {

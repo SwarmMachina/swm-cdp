@@ -1,7 +1,9 @@
 import emitDiagnostic from '../../diagnostics.js'
+import normalizeError from '../../error.js'
 import EventRegistry, { type Unsubscribe } from '../../events/event-registry.js'
 import type { LogScope, TransportOptions } from '../../types.js'
 import scanCdpEnvelope from '../selective-json.js'
+import isTargetLifecycleEvent from '../target-lifecycle.js'
 import TaskQueue from './task-queue.js'
 
 const MiB = 1024 * 1024
@@ -186,16 +188,4 @@ function isDroppableNotification(message: string): boolean {
   const envelope = scanCdpEnvelope(message)
 
   return Boolean(envelope?.method && !isTargetLifecycleEvent(envelope.method))
-}
-
-function isTargetLifecycleEvent(method: string): boolean {
-  return (
-    method === 'Target.attachedToTarget' ||
-    method === 'Target.detachedFromTarget' ||
-    method === 'Target.targetInfoChanged'
-  )
-}
-
-function normalizeError(error: unknown, message: string): Error {
-  return error instanceof Error ? error : new Error(message, { cause: error })
 }

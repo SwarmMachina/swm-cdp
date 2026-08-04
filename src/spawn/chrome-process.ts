@@ -1,12 +1,9 @@
 import { type ChildProcess, execFile, spawn as spawnChild, type SpawnOptions } from 'node:child_process'
 
 import emitDiagnostic from '../diagnostics.js'
+import normalizeError from '../error.js'
 import EventRegistry from '../events/event-registry.js'
 import type { CreateChildProcess, NormalizedLaunchOptions } from '../types.js'
-
-function normalizeError(error: unknown): Error {
-  return error instanceof Error ? error : new Error('Unexpected process error', { cause: error })
-}
 
 function isErrnoException(error: unknown): error is NodeJS.ErrnoException {
   return error instanceof Error && 'code' in error
@@ -257,7 +254,7 @@ export class ChromeProcess {
       await this.waitForExit(Math.max(0, deadline - Date.now()))
     } catch (error) {
       if (!this.isExited) {
-        const normalized = normalizeError(error)
+        const normalized = normalizeError(error, 'Unexpected process error')
 
         throw new Error(`Chrome could not be killed: ${normalized.message}`, { cause: error })
       }

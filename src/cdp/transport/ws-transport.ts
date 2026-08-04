@@ -1,4 +1,5 @@
 import type { Transport, TransportOptions } from '../../types.js'
+import normalizeError from '../../error.js'
 import TransportCore from './transport.js'
 
 export type WebSocketLike = Pick<
@@ -92,13 +93,13 @@ export class WebSocketTransport implements Transport {
       this.#attachTimeout = setTimeout(() => {
         const error = new Error('WebSocket attach timeout exceeded')
 
-        this.#rejectAttach(error)
+        this.#settleAttachment(error)
         this.#core.close(error)
       }, this.options.attachTimeout)
     } catch (error) {
       const normalized = normalizeError(error, 'WebSocket attach failed')
 
-      this.#rejectAttach(normalized)
+      this.#settleAttachment(normalized)
       this.#core.close(normalized)
     }
 
@@ -126,7 +127,7 @@ export class WebSocketTransport implements Transport {
 
   #closeIO(): void {
     if (this.#attachment) {
-      this.#rejectAttach(new Error('WebSocket closed before attach'))
+      this.#settleAttachment(new Error('WebSocket closed before attach'))
     }
 
     this.#detachSocket()
@@ -141,11 +142,11 @@ export class WebSocketTransport implements Transport {
   readonly #onSocketOpen = (): void => {
     try {
       this.#core.completeAttach()
-      this.#resolveAttach()
+      this.#settleAttachment()
     } catch (error) {
       const normalized = normalizeError(error, 'WebSocket attach failed')
 
-      this.#rejectAttach(normalized)
+      this.#settleAttachment(normalized)
       this.#core.close(normalized)
     }
   }
@@ -154,7 +155,7 @@ export class WebSocketTransport implements Transport {
     const error = this.#core.attaching ? new Error('WebSocket closed before attach') : undefined
 
     if (error) {
-      this.#rejectAttach(error)
+      this.#settleAttachment(error)
     }
 
     this.#core.close(error)
@@ -167,7 +168,7 @@ export class WebSocketTransport implements Transport {
     const error = detail.error instanceof Error ? detail.error : new Error(message)
 
     if (this.#core.attaching) {
-      this.#rejectAttach(error)
+      this.#settleAttachment(error)
     }
 
     this.#core.close(error)
@@ -190,20 +191,17 @@ export class WebSocketTransport implements Transport {
     }
   }
 
-  #rejectAttach(error: Error): void {
+  #settleAttachment(error?: Error): void {
     this.#clearAttachTimeout()
     const attachment = this.#attachment
 
     this.#attachment = null
-    attachment?.reject(error)
-  }
 
-  #resolveAttach(): void {
-    this.#clearAttachTimeout()
-    const attachment = this.#attachment
-
-    this.#attachment = null
-    attachment?.resolve()
+    if (error) {
+      attachment?.reject(error)
+    } else {
+      attachment?.resolve()
+    }
   }
 
   #clearAttachTimeout(): void {
@@ -231,8 +229,4 @@ export default WebSocketTransport
 
 function defaultCreateWebSocket(endpoint: string): WebSocketLike {
   return new WebSocket(endpoint)
-}
-
-function normalizeError(error: unknown, message: string): Error {
-  return error instanceof Error ? error : new Error(message, { cause: error })
 }

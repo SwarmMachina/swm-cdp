@@ -83,9 +83,14 @@ export class RequestDispatcher {
     }
 
     try {
-      const { options: _localOptions, ...wireRequest } = trackedRequest
-
-      this.#transport.sendMessage(JSON.stringify(wireRequest))
+      this.#transport.sendMessage(
+        JSON.stringify({
+          id,
+          method: request.method,
+          params: request.params,
+          sessionId: request.sessionId
+        })
+      )
     } catch (error) {
       this.#reject(id, error)
     }

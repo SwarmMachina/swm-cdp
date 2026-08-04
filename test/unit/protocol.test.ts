@@ -132,7 +132,7 @@ test('RequestDispatcher keeps local request metadata outside the wire payload', 
   const wireRequest = transport.sent[0]!
 
   assert.equal('id' in request, false)
-  assert.equal('options' in wireRequest, false)
+  assert.deepEqual(wireRequest, { id: 1, method: 'Browser.getVersion' })
 
   dispatcher.resolve({ id: wireRequest.id!, result: {} })
   await responsePromise
@@ -303,6 +303,21 @@ test('Connection fails closed on malformed wire data', () => {
   assert.equal(transport.closeCalls.length, 1)
   assert.equal(root.closed, true)
   assert.ok(root.error instanceof SyntaxError)
+})
+
+test('Connection reports an invalid target lifecycle payload', () => {
+  const transport = new FakeTransport()
+  const root = new Connection(transport)
+
+  root.onTransportMessage(
+    JSON.stringify({
+      method: 'Target.targetInfoChanged',
+      params: { targetInfo: { targetId: '' } }
+    })
+  )
+
+  assert.equal(root.closed, false)
+  assert.match(root.error?.message ?? '', /non-empty target id/)
 })
 
 test('Connection routes nested flattened sessions through the shared registry', async (t) => {

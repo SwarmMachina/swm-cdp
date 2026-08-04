@@ -1,5 +1,6 @@
 import type { SessionIdentifier, TargetInfo } from '../../types.js'
 import SessionAttachment from './session-attachment.js'
+import { assertSessionId, assertTargetInfo } from './session-assertions.js'
 
 export class SessionRegistry {
   readonly #attachmentsBySession = new Map<string, SessionAttachment>()
@@ -154,19 +155,3 @@ export class SessionRegistry {
 }
 
 export default SessionRegistry
-
-function assertSessionId(value: unknown, label: string): asserts value is string {
-  if (typeof value !== 'string' || value.length === 0) {
-    throw new TypeError(`${label} must be a non-empty string`)
-  }
-}
-
-function assertTargetInfo(value: unknown): asserts value is TargetInfo {
-  if (!value || typeof value !== 'object' || !('targetId' in value) || typeof value.targetId !== 'string') {
-    throw new TypeError('Target info must contain a non-empty target id')
-  }
-
-  if (value.targetId.length === 0) {
-    throw new TypeError('Target info must contain a non-empty target id')
-  }
-}

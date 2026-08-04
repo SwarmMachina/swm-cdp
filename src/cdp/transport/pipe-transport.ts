@@ -1,4 +1,5 @@
 import type { ReadStreamLike, Transport, TransportOptions, WriteStreamLike } from '../../types.js'
+import normalizeError from '../../error.js'
 import TransportCore from './transport.js'
 
 interface PipeTransportOptions {
@@ -221,7 +222,3 @@ export class PipeTransport implements Transport {
 }
 
 export default PipeTransport
-
-function normalizeError(error: unknown, message: string): Error {
-  return error instanceof Error ? error : new Error(message, { cause: error })
-}

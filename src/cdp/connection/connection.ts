@@ -10,11 +10,14 @@ import type {
   TargetInfo,
   Transport
 } from '../../types.js'
+import normalizeError from '../../error.js'
 import CdpError from '../cdp-error.js'
-import resolveOperationOptions from '../operation-options.js'
+import resolveOperationOptions, { getAbortError } from '../operation-options.js'
 import scanCdpEnvelope from '../selective-json.js'
+import isTargetLifecycleEvent from '../target-lifecycle.js'
 import RequestDispatcher from '../request-dispatcher.js'
 import SessionAttachment from './session-attachment.js'
+import { assertSessionId, assertTargetInfo } from './session-assertions.js'
 import SessionRegistry from './session-registry.js'
 
 interface ConnectionEvents {
@@ -281,23 +284,18 @@ export class Connection {
     }
   }
 
-  #getSessionId(session: SessionIdentifier, throwIfNotAttached = false): string | undefined {
-    const sessionId = this.#sessionRegistry.getSessionId(session, throwIfNotAttached)
-    const targetAttachment = sessionId ? this.#sessionRegistry.getAttachment(sessionId) : undefined
+  #getAttachment(session: SessionIdentifier, throwIfNotAttached = false): SessionAttachment | undefined {
+    const attachment = this.#sessionRegistry.getAttachment(session, throwIfNotAttached)
 
-    if (this.sessionId && targetAttachment?.parentSessionId !== this.sessionId) {
-      if (throwIfNotAttached) {
-        throw new Error(`Attachment ${sessionId} is not owned by session ${this.sessionId}.`)
-      }
-
-      return undefined
+    if (!attachment || !this.sessionId || attachment.parentSessionId === this.sessionId) {
+      return attachment
     }
 
-    return sessionId
-  }
+    if (throwIfNotAttached) {
+      throw new Error(`Attachment ${attachment.sessionId} is not owned by session ${this.sessionId}.`)
+    }
 
-  #getAttachment(session: SessionIdentifier, throwIfNotAttached = false): SessionAttachment | undefined {
-    return this.#sessionRegistry.getAttachment(this.#getSessionId(session, throwIfNotAttached), throwIfNotAttached)
+    return undefined
   }
 
   getConnection(session: SessionIdentifier, throwIfNotAttached: true): Connection
@@ -489,10 +487,7 @@ export class Connection {
       reject(error)
     }
     const onConnectionClose = (): void => rejectError(new Error(`Connection closed while waiting for ${eventName}`))
-    const onAbort = (): void =>
-      rejectError(
-        signal?.reason instanceof Error ? signal.reason : new DOMException('The operation was aborted', 'AbortError')
-      )
+    const onAbort = (): void => rejectError(getAbortError(signal!))
 
     unsubscribe = this.on<EventPayload>(eventName, (event) => {
       try {
@@ -560,27 +555,3 @@ export class Connection {
 }
 
 export default Connection
-
-function normalizeError(error: unknown, message: string): Error {
-  return error instanceof Error ? error : new Error(message, { cause: error })
-}
-
-function assertSessionId(value: unknown): asserts value is string {
-  if (typeof value !== 'string' || value.length === 0) {
-    throw new TypeError('Session id must be a non-empty string')
-  }
-}
-
-function assertTargetInfo(value: unknown): asserts value is TargetInfo {
-  if (!value || typeof value !== 'object' || !('targetId' in value) || typeof value.targetId !== 'string') {
-    throw new TypeError('Target info must contain a non-empty target id')
-  }
-}
-
-function isTargetLifecycleEvent(method: string): boolean {
-  return (
-    method === 'Target.attachedToTarget' ||
-    method === 'Target.detachedFromTarget' ||
-    method === 'Target.targetInfoChanged'
-  )
-}

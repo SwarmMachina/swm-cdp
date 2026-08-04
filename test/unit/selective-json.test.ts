@@ -14,7 +14,7 @@ test('selective scanner extracts routing fields across nested payloads', () => {
     method: 'Network.dataReceived',
     sessionId: 'session-1'
   })
-  assert.deepEqual(scanCdpEnvelope('{"result":{"method":"not-an-event"},"id":7}'), { id: 7 })
+  assert.deepEqual(scanCdpEnvelope('{"result":{"method":"not-an-event"},"id":7}'), {})
 })
 
 test('selective scanner rejects incomplete and structurally invalid envelopes', () => {

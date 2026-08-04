@@ -3,6 +3,7 @@ import RemoteConnection from '../cdp/connection/remote-connection.js'
 import PipeTransport from '../cdp/transport/pipe-transport.js'
 import WebSocketTransport, { type CreateWebSocket } from '../cdp/transport/ws-transport.js'
 import emitDiagnostic from '../diagnostics.js'
+import normalizeError from '../error.js'
 import EventRegistry, { type Unsubscribe } from '../events/event-registry.js'
 import type {
   ChromeProcessLike,
@@ -350,7 +351,3 @@ export class Browser {
 }
 
 export default Browser
-
-function normalizeError(error: unknown, message: string): Error {
-  return error instanceof Error ? error : new Error(message, { cause: error })
-}
