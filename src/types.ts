@@ -25,10 +25,13 @@ export interface LogEntry {
   scope: LogScope
 
   /** Unix timestamp in milliseconds. */
-  ts: number
+  time: number
 }
 
-/** Receives structured runtime diagnostics. */
+/**
+ * Receives structured runtime diagnostics.
+ * @param entry Diagnostic record emitted by the runtime.
+ */
 export type LogSink = (entry: LogEntry) => void
 
 /** Deadline and cancellation controls for one CDP operation. */

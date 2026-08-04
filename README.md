@@ -339,7 +339,7 @@ The `debugProtocol`, `debugTransport`, and `debugSpawn` flags enable diagnostics
 
 | Field   | Type                                      | Description                      |
 | ------- | ----------------------------------------- | -------------------------------- |
-| `ts`    | `number`                                  | Unix timestamp in milliseconds.  |
+| `time`  | `number`                                  | Unix timestamp in milliseconds.  |
 | `level` | `'debug' \| 'info' \| 'warn' \| 'error'`  | Event severity.                  |
 | `scope` | `'spawn' \| 'pipe' \| 'ws' \| 'protocol'` | Runtime subsystem.               |
 | `event` | `string`                                  | Stable dot-separated event name. |

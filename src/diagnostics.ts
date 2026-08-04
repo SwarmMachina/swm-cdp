@@ -10,7 +10,6 @@ const consoleSink: LogSink = ({ data, event, level, scope }) => {
   }
 }
 
-/** Delivers one diagnostic record to the configured sink or to `console`. */
 export default function emitDiagnostic(
   sink: LogSink | undefined,
   level: LogLevel,
@@ -18,8 +17,8 @@ export default function emitDiagnostic(
   event: string,
   data?: unknown
 ): void {
-  const ts = Date.now()
-  const entry: LogEntry = data === undefined ? { event, level, scope, ts } : { data, event, level, scope, ts }
+  const time = Date.now()
+  const entry: LogEntry = data === undefined ? { event, level, scope, time } : { data, event, level, scope, time }
   const destination = sink ?? consoleSink
 
   try {

@@ -12,10 +12,10 @@ test('emitDiagnostic adds a timestamp and uses the configured sink', () => {
 
   const after = Date.now()
 
-  assert.deepEqual(entries, [{ event: 'process.started', level: 'info', scope: 'spawn', ts: entries[0]!.ts }])
-  assert.ok(Number.isSafeInteger(entries[0]!.ts))
-  assert.ok(entries[0]!.ts >= before)
-  assert.ok(entries[0]!.ts <= after)
+  assert.deepEqual(entries, [{ event: 'process.started', level: 'info', scope: 'spawn', time: entries[0]!.time }])
+  assert.ok(Number.isSafeInteger(entries[0]!.time))
+  assert.ok(entries[0]!.time >= before)
+  assert.ok(entries[0]!.time <= after)
 })
 
 test('emitDiagnostic falls back to console and isolates sink failures', () => {
