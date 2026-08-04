@@ -3,7 +3,7 @@
 [![CI](https://github.com/SwarmMachina/swm-cdp/actions/workflows/ci.yml/badge.svg)](https://github.com/SwarmMachina/swm-cdp/actions/workflows/ci.yml)
 [![License: MPL 2.0](https://img.shields.io/badge/License-MPL%202.0-brightgreen.svg)](https://opensource.org/licenses/MPL-2.0)
 [![Node.js](https://img.shields.io/badge/node-22%20%7C%2024-brightgreen.svg)](https://nodejs.org/)
-[![runtime dependencies](https://img.shields.io/badge/runtime_dependencies-0-brightgreen.svg)](#runtime-design)
+[![runtime dependencies](https://img.shields.io/badge/runtime_dependencies-0-brightgreen.svg)](#runtime-requirements)
 [![stability](https://img.shields.io/badge/stability-experimental-orange.svg)](#stability)
 
 Zero-dependency, ESM-only Chrome DevTools Protocol client for Node.js 22 and 24.
@@ -32,6 +32,7 @@ pnpm add @swarmmachina/swm-cdp
 
 - Node.js `^22.13.0` or 24.x.
 - Native ESM.
+- No runtime npm dependencies.
 - A locally installed Chrome or Chromium executable when using `spawnChrome()`.
 - The built-in Node.js `WebSocket`; runtimes started with `--no-experimental-websocket` are not supported.
 
@@ -45,7 +46,7 @@ The examples below are the canonical usage model: `connect()` owns one remote cl
 
 Start Chrome with a loopback debugging endpoint, then connect to its browser-level WebSocket:
 
-```ts
+```time
 import connect from '@swarmmachina/swm-cdp'
 
 const cdp = await connect({ host: '127.0.0.1', port: 9222 })
@@ -62,7 +63,7 @@ try {
 
 ### Launch Owned Chrome
 
-```ts
+```time
 import { spawnChrome } from '@swarmmachina/swm-cdp'
 
 const browser = spawnChrome({
@@ -99,7 +100,7 @@ The launch example is also the reference for commands, events, and flattened ses
 
 Keep the returned function and call it when the subscription is no longer needed:
 
-```ts
+```time
 await cdp.send('Runtime.enable', undefined, sessionId)
 
 const unsubscribe = cdp.on('Runtime.consoleAPICalled', (event, eventSessionId) => {
@@ -119,7 +120,7 @@ Calling `unsubscribe()` more than once is safe.
 
 ### Discovery
 
-```ts
+```time
 import { closeTarget, createTarget, list, version } from '@swarmmachina/swm-cdp'
 
 const endpoint = { host: '127.0.0.1', port: 9222 }
@@ -131,7 +132,7 @@ console.log(browserVersion.webSocketDebuggerUrl, targets.length)
 await closeTarget(target.id, endpoint)
 ```
 
-Discovery uses `node:http` and `node:https`; it does not require an open CDP client.
+Discovery uses the built-in `fetch`; it does not require an open CDP client.
 
 ## API Documentation
 
@@ -143,20 +144,20 @@ Opens a browser-level CDP WebSocket and resolves after the handshake succeeds.
 
 Accepted target forms:
 
-| Target                                     | Meaning                                            |
-| ------------------------------------------ | -------------------------------------------------- |
-| `'ws://127.0.0.1:9222/devtools/browser/…'` | Complete browser-level CDP URL                     |
-| `new URL('ws://[::1]:9222/devtools/…')`    | Complete IPv6 loopback URL                         |
-| `{ url: string \| URL }`                   | Complete URL wrapped in an object                  |
-| `{ host?, port?, secure? }`                | Endpoint description; defaults to `127.0.0.1:9222` |
+| Target                                     | Meaning                                               |
+| ------------------------------------------ | ----------------------------------------------------- |
+| `'ws://127.0.0.1:9222/devtools/browser/…'` | Complete browser-level CDP URL                        |
+| `new URL('ws://[::1]:9222/devtools/…')`    | Complete IPv6 loopback URL                            |
+| `{ url: string \| URL }`                   | Complete URL wrapped in an object                     |
+| `{ host?, port?, secure? }`                | HTTP discovery endpoint; defaults to `127.0.0.1:9222` |
 
-Only `ws:` and `wss:` are accepted. The host must be exactly `127.0.0.1` or `[::1]`.
+Complete URLs accept only `ws:` and `wss:`. Endpoint descriptions are resolved through `/json/version` over HTTP or HTTPS. The browser WebSocket host must be exactly `127.0.0.1` or `[::1]`.
 
 `ConnectOptions`:
 
 | Option                  | Default   | Description                                               |
 | ----------------------- | --------- | --------------------------------------------------------- |
-| `attachTimeout`         | `60_000`  | WebSocket handshake deadline in milliseconds.             |
+| `attachTimeout`         | `60_000`  | Combined discovery and WebSocket handshake deadline.      |
 | `debugProtocol`         | `false`   | Emit CDP request, response, and event diagnostics.        |
 | `debugTransport`        | `false`   | Emit transport lifecycle and message diagnostics.         |
 | `eventBackpressure`     | `'close'` | Queue overflow policy: `'close'` or `'drop-oldest'`.      |
@@ -186,7 +187,7 @@ Invalid targets and unknown or invalid options throw `TypeError` before attachme
 
 `send()` supports per-operation cancellation and deadlines:
 
-```ts
+```time
 const controller = new AbortController()
 
 const result = await cdp.send(
@@ -199,7 +200,7 @@ const result = await cdp.send(
 
 For commands without parameters, pass `undefined` before `sessionId` or operation options. Unknown protocol extensions can be called with an explicit result type:
 
-```ts
+```time
 const result = await cdp.send<{ value: string }>('Vendor.customMethod', { key: 'value' })
 ```
 
@@ -313,7 +314,7 @@ The same functions and discovery types are available from `@swarmmachina/swm-cdp
 Enabled diagnostics are written to `console` by default. Configure `logger` with a `LogSink` callback to receive
 structured `LogEntry` records instead:
 
-```ts
+```time
 import connect, { type LogSink } from '@swarmmachina/swm-cdp'
 
 const logger: LogSink = (entry) => {
@@ -347,7 +348,7 @@ The `debugProtocol`, `debugTransport`, and `debugSpawn` flags enable diagnostics
 
 ### Error Handling
 
-```ts
+```time
 import { CdpError } from '@swarmmachina/swm-cdp'
 
 try {
@@ -372,7 +373,7 @@ try {
 | Outbound buffered bytes | `16 MiB` | Reject or close when queued writes exceed the limit.              |
 | CDP message bytes       | `64 MiB` | Close the transport when the encoded message exceeds the limit.   |
 | Endpoint stderr bytes   | `64 KiB` | Fail WebSocket endpoint discovery.                                |
-| Discovery response body | `8 MiB`  | Destroy the discovery request.                                    |
+| Discovery response body | `8 MiB`  | Cancel response-body reading and reject the request.              |
 
 `eventBackpressure: 'drop-oldest'` drops only ordinary notifications. Responses and target lifecycle events are retained so request completion and flattened-session state remain coherent.
 
@@ -408,17 +409,7 @@ Use `chrome-remote-interface` when dynamic domain objects are more valuable than
 
 ## Performance Status
 
-The committed protocol and Chrome transport scenarios use `@swarmmachina/benchkit` 0.3 for bounded latency histograms, throughput, p95/p99 latency, event-loop utilization, memory deltas, and process-memory peaks. Regression thresholds remain disabled until repeated calibration runs complete on the dedicated `swm-ci/bench` runner. This table intentionally contains no invented numbers.
-
-| Scenario                        |             swm-cdp |                 CRI | puppeteer-core CDPSession |
-| ------------------------------- | ------------------: | ------------------: | ------------------------: |
-| Command RTT, in-flight 1/32/256 | calibration pending | calibration pending |                         — |
-| Subscribed event storm          | calibration pending | calibration pending |       calibration pending |
-| Unsubscribed event storm        | calibration pending | calibration pending |       calibration pending |
-| Payloads 1/8/32 MiB             | calibration pending | calibration pending |       calibration pending |
-| 80% events / 20% commands       | calibration pending | calibration pending |       calibration pending |
-| Connect and cold import         | calibration pending | calibration pending |                         — |
-| 60-second soak                  | calibration pending | calibration pending |       calibration pending |
+The committed protocol benchmark measures request/response throughput, flattened-session event delivery, and subscribed and unsubscribed event storms. The Chrome benchmark measures `Runtime.evaluate` over the pipe and WebSocket transports. Both use `@swarmmachina/benchkit` 0.3 for bounded latency histograms, throughput, p95/p99 latency, event-loop utilization, memory deltas, and process-memory peaks. Regression thresholds remain disabled until repeated calibration runs complete on the dedicated `swm-ci/bench` runner.
 
 ## Testing
 
@@ -440,11 +431,11 @@ pnpm run bench:protocol -- --iterations 50000 --warmup 5000 --concurrency 128
 pnpm run bench:chrome -- --iterations 10000 --warmup 1000 --concurrency 32 --transport both
 ```
 
-Both benchmark commands print a Markdown report containing throughput, p95/p99 latency, ELU, and memory measurements under the fixed parameters shown above. The unit suite covers protocol interleaving and sessions, request cleanup, native WebSocket integration, selective scanning, spawn cleanup, and discovery. The Chrome e2e suite covers both transports, concurrent flattened sessions, timeout recovery, pending-request pressure, discovery target lifecycle, reconnect, graceful shutdown, and unexpected process exit. The release gate adds strict TypeScript checks for source, tests, scripts, benchmarks, and public contracts, plus leak checks, profiling, and build verification. CI also packages and smoke-tests the tarball, runs supported Node.js versions, and exercises a pinned headless Chrome container, including a differential check against CRI.
+Both benchmark commands print a Markdown report containing throughput, p95/p99 latency, ELU, and memory measurements under the parameters shown in the commands. The unit suite covers protocol interleaving and sessions, request cleanup, native WebSocket integration, selective scanning, spawn cleanup, and discovery. The Chrome e2e suite covers both transports, concurrent flattened sessions, timeout recovery, pending-request pressure, discovery target lifecycle, reconnect, graceful shutdown, and unexpected process exit. The release gate adds strict TypeScript checks for source, tests, scripts, benchmarks, and public contracts, plus leak checks, profiling, and build verification. CI also packages and smoke-tests the tarball, runs supported Node.js versions, and exercises a pinned headless Chrome container, including a differential check against CRI.
 
 ## Release
 
-Version tags matching `v*` publish only after CI builds the package, installs the exact tarball into a clean consumer project, and passes its smoke test. The first `v0.1.0` publication uses the repository npm token; later releases use npm trusted publishing.
+CI publishes only a `vX.Y.Z` tag whose version exactly matches `package.json`. It builds and packs the package once, installs that exact tarball into a clean consumer project, and publishes it only after the smoke test passes. The first `v0.1.0` publication uses the repository npm token with provenance; later releases use npm trusted publishing.
 
 ## Stability
 
@@ -456,4 +447,8 @@ Run `pnpm run release:gate` before opening a pull request. Keep runtime dependen
 
 ## License
 
-[MPL-2.0](./LICENSE). Generated Chrome DevTools Protocol declarations retain their Chromium BSD license headers.
+Licensed under the MPL-2.0 License.
+
+Copyright Contributors to SwarmMachina.
+
+See [LICENSE](LICENSE) for details. Generated Chrome DevTools Protocol declarations retain their Chromium BSD license headers.
