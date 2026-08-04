@@ -37,7 +37,7 @@ function freezeOptions(options: NormalizedLaunchOptions): void {
  * @remarks Process creation is synchronous from the caller's perspective;
  * protocol readiness is an explicit asynchronous stage.
  * @example
- * ```ts
+ * ```time
  * const browser = spawnChrome({ headless: true })
  * const cdp = await browser.attach()
  * await cdp.send('Browser.getVersion')

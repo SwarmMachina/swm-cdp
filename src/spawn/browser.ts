@@ -15,17 +15,39 @@ import type {
 import WebSocketEndpoint from './websocket-endpoint.js'
 import UserDataDirectory from './user-data-directory.js'
 
+/** Lifecycle states reported by {@link Browser.state}. */
 type BrowserState = 'created' | 'attaching' | 'open' | 'closing' | 'closed'
+
+/** Lifecycle events emitted by {@link Browser}. */
 type BrowserEvents = {
+  /** Unexpected transport failure. */
   error: [error: Error]
+
+  /** Owned Chrome process termination. */
   exit: [reason?: unknown]
 }
-type AttachableTransport = Transport & { attach(): void | Promise<void> }
 
+/** CDP transport owned and attached by {@link Browser}. */
+type AttachableTransport = Transport & {
+  /** Establishes the underlying CDP channel. */
+  attach(): void | Promise<void>
+}
+
+/**
+ * Internal construction dependencies for {@link Browser}.
+ * @internal
+ */
 interface BrowserOptions {
+  /** Owner of the started Chrome child process. */
   chromeProcess: ChromeProcessLike
+
+  /** Injectable WebSocket construction seam. */
   createWebSocket?: CreateWebSocket
+
+  /** Validated launch options. */
   options: NormalizedLaunchOptions
+
+  /** Owner of the Chrome profile directory. */
   userDataDirectory?: UserDataDirectory
 }
 
@@ -54,6 +76,10 @@ export class Browser {
   #attachPromise: Promise<RemoteConnection> | null = null
   #closePromise: Promise<void> | null = null
 
+  /**
+   * Creates a lifecycle owner around an already-started Chrome process.
+   * @internal
+   */
   constructor({ chromeProcess, createWebSocket, options, userDataDirectory }: BrowserOptions) {
     this.#chromeProcess = chromeProcess
     this.#createWebSocket = createWebSocket
@@ -128,7 +154,11 @@ export class Browser {
     return this.#userDataDirectory.path
   }
 
-  /** Returns the number of listeners registered for a lifecycle event. */
+  /**
+   * Returns the number of listeners registered for a lifecycle event.
+   * @param event Lifecycle event name.
+   * @returns Number of registered listeners.
+   */
   listenerCount(event: keyof BrowserEvents): number {
     return this.#events.listenerCount(event)
   }
@@ -138,6 +168,8 @@ export class Browser {
    *
    * The `error` event reports an unexpected transport failure. The `exit`
    * event reports process termination.
+   * @param event Lifecycle event name.
+   * @param listener Function invoked when the event occurs.
    * @returns A function that removes the listener.
    */
   on<Name extends keyof BrowserEvents>(event: Name, listener: (...args: BrowserEvents[Name]) => void): Unsubscribe {
@@ -146,13 +178,19 @@ export class Browser {
 
   /**
    * Registers a one-shot lifecycle event listener.
+   * @param event Lifecycle event name.
+   * @param listener Function invoked at most once.
    * @returns A function that removes the listener before it runs.
    */
   once<Name extends keyof BrowserEvents>(event: Name, listener: (...args: BrowserEvents[Name]) => void): Unsubscribe {
     return this.#events.once(event, listener)
   }
 
-  /** Removes a lifecycle event listener. */
+  /**
+   * Removes a lifecycle event listener.
+   * @param event Lifecycle event name.
+   * @param listener Previously registered listener.
+   */
   removeListener<Name extends keyof BrowserEvents>(
     event: Name,
     listener: (...args: BrowserEvents[Name]) => void
@@ -162,6 +200,7 @@ export class Browser {
 
   /**
    * Establishes the configured CDP transport and returns its client.
+   * @returns The attached CDP client.
    * @throws {Error} If Chrome exits, endpoint discovery fails, or the transport
    * cannot be attached. A failed attach also terminates the owned process.
    */
@@ -174,8 +213,9 @@ export class Browser {
   /**
    * Gracefully closes Chrome, falling back to process termination at the
    * shutdown deadline.
-   * @param timeout - Total graceful-shutdown budget in milliseconds. Defaults
+   * @param timeout Total graceful-shutdown budget in milliseconds. Defaults
    * to the `shutdownTimeout` supplied to {@link spawnChrome}.
+   * @returns Fulfills after the process exits and lifecycle resources close.
    * @remarks This method is idempotent.
    */
   close(timeout = this.#options.shutdownTimeout): Promise<void> {
@@ -184,14 +224,19 @@ export class Browser {
     return this.#closePromise
   }
 
-  /** Alias for {@link Browser.close}, suitable for explicit disposal hooks. */
+  /**
+   * Alias for {@link Browser.close}, suitable for explicit disposal hooks.
+   * @param timeout Total graceful-shutdown budget in milliseconds.
+   * @returns Fulfills after the browser closes.
+   */
   dispose(timeout?: number): Promise<void> {
     return this.close(timeout)
   }
 
   /**
    * Terminates the owned Chrome process without sending `Browser.close`.
-   * @param timeout - Process-termination budget in milliseconds.
+   * @param timeout Process-termination budget in milliseconds.
+   * @returns Fulfills after the process exits.
    */
   kill(timeout?: number): Promise<void> {
     return this.#chromeProcess.kill(timeout)
@@ -199,7 +244,8 @@ export class Browser {
 
   /**
    * Waits for the owned Chrome process to exit.
-   * @param timeout - Maximum wait in milliseconds. Defaults to 30 seconds.
+   * @param timeout Maximum wait in milliseconds. Defaults to 30 seconds.
+   * @returns Fulfills when the process exits.
    */
   waitForExit(timeout?: number): Promise<void> {
     return this.#chromeProcess.waitForExit(timeout)
@@ -335,6 +381,7 @@ export class Browser {
         [this.#browserError, killError],
         'Transport failed and Chrome could not be killed'
       )
+
       this.#debug('transport.cleanup-failed', this.#browserError)
 
       if (this.#events.listenerCount('error') > 0) {

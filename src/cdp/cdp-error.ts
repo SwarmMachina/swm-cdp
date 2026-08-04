@@ -15,6 +15,7 @@ export default class CdpError extends Error {
   readonly response: CdpResponse
 
   /**
+   * Creates an error from a failed CDP request and its response.
    * @param request Original local request metadata.
    * @param response CDP response containing an `error` object.
    */
@@ -29,13 +30,19 @@ export default class CdpError extends Error {
 
   /**
    * Tests whether a value is a CDP protocol error.
+   * @param error Value to test.
    * @returns `true` when `error` is a {@link CdpError}.
    */
   static isCdpError(error: unknown): error is CdpError {
     return error instanceof CdpError
   }
 
-  /** @deprecated Use {@link CdpError.isCdpError}. */
+  /**
+   * Tests whether a value is a CDP protocol error.
+   * @param error Value to test.
+   * @returns `true` when `error` is a {@link CdpError}.
+   * @deprecated Use {@link CdpError.isCdpError}.
+   */
   static isProtocolError(error: unknown): error is CdpError {
     return error instanceof CdpError
   }

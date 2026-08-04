@@ -60,7 +60,7 @@ export default class WebSocketEndpoint {
 
     const { reject, resolve, promise } = Promise.withResolvers<string>()
 
-    const waiter: EndpointWaiter = {
+    this.#waiter = {
       promise,
       reject,
       resolve,
@@ -69,8 +69,6 @@ export default class WebSocketEndpoint {
         reject(new Error('Chrome debugging endpoint timeout exceeded'))
       }, this.#options.startupTimeout)
     }
-
-    this.#waiter = waiter
 
     return promise
   }

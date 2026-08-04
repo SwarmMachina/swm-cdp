@@ -9,12 +9,17 @@ import type Connection from './connection.js'
 export class RemoteConnection {
   /**
    * Subscribes to a typed CDP event.
+   * @param event Fully qualified CDP event name.
+   * @param listener Function invoked with the event payload and optional
+   * flattened-session ID.
    * @returns A function that removes the listener.
    */
   readonly on: Connection['on']
 
   /**
    * Waits for the next typed CDP event, or registers a one-shot listener.
+   * @param event Fully qualified CDP event name.
+   * @param listener Optional function invoked at most once.
    * @returns A promise when no listener is supplied; otherwise a function that
    * removes the listener.
    */
@@ -22,18 +27,25 @@ export class RemoteConnection {
 
   /**
    * Subscribes to connection closure outside the CDP event namespace.
+   * @param listener Function invoked when the connection closes.
    * @returns A function that removes the listener.
    */
   readonly onClose: Connection['onClose']
 
   /**
    * Subscribes to transport and protocol errors.
+   * @param listener Function invoked with the reported error.
    * @returns A function that removes the listener.
    */
   readonly onError: Connection['onError']
 
   /**
    * Sends a typed CDP command.
+   * @param method Fully qualified CDP method name.
+   * @param params Method parameters, when required by the command.
+   * @param sessionIdOrOptions Flattened-session ID or per-command options.
+   * @param options Per-command options when a session ID is supplied.
+   * @returns The typed command result.
    * @throws {CdpError} If Chrome returns a protocol error.
    * @throws {Error} If the operation is cancelled, times out, or the
    * connection closes.
@@ -43,6 +55,10 @@ export class RemoteConnection {
   readonly #closeConnection: () => Promise<void>
   #closePromise: Promise<void> | null = null
 
+  /**
+   * Creates a public facade around an internal protocol connection.
+   * @internal
+   */
   constructor(connection: Connection, closeConnection: () => Promise<void>) {
     this.#connection = connection
     this.#closeConnection = closeConnection

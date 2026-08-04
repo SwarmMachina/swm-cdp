@@ -14,10 +14,6 @@ interface ListenerBucket {
   tail: ListenerNode | null
 }
 
-/**
- * Allocation-free dispatch registry after subscription. Listener nodes are
- * linked so unsubscribe during dispatch does not require snapshot arrays.
- */
 export default class EventRegistry<Events extends { [Name in keyof Events]: unknown[] }> {
   readonly #buckets = new Map<keyof Events, ListenerBucket>()
 

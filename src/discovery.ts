@@ -1,5 +1,26 @@
-/** Chrome HTTP discovery endpoint. */
-export type DiscoveryTarget = string | URL | { url: string | URL } | { host?: string; port?: number; secure?: boolean }
+/**
+ * Chrome HTTP discovery endpoint.
+ *
+ * Object targets default to `127.0.0.1:9222`. WebSocket URL schemes are
+ * converted to their HTTP equivalents.
+ */
+export type DiscoveryTarget =
+  | string
+  | URL
+  | {
+      /** Complete Chrome discovery URL. */
+      url: string | URL
+    }
+  | {
+      /** Discovery host. */
+      host?: string
+
+      /** Browser debugging port. */
+      port?: number
+
+      /** Whether to use HTTPS for discovery. */
+      secure?: boolean
+    }
 
 /** Resource limits for one Chrome discovery request. */
 export interface DiscoveryOptions {
@@ -29,6 +50,8 @@ export interface DiscoveryTargetInfo {
 
   /** Target-level CDP WebSocket URL, when exposed by Chrome. */
   webSocketDebuggerUrl?: string
+
+  /** Additional target metadata supplied by Chrome. */
   [key: string]: unknown
 }
 
@@ -42,6 +65,8 @@ export interface BrowserVersionInfo {
 
   /** Browser-level CDP WebSocket URL, when exposed by Chrome. */
   webSocketDebuggerUrl?: string
+
+  /** Additional version metadata supplied by Chrome. */
   [key: string]: unknown
 }
 
@@ -107,6 +132,7 @@ export function createTarget(
  * @param targetId Non-empty Chrome target identifier.
  * @param target HTTP discovery endpoint.
  * @param options Response-size and timeout limits.
+ * @returns Fulfills after Chrome accepts the close request.
  * @throws {TypeError} If `targetId` or the target is invalid.
  * @throws {RangeError} If the response exceeds `maxResponseBytes`.
  * @throws {Error} If the request times out, fails, or returns a non-success

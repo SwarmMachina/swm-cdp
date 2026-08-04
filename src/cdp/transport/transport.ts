@@ -19,7 +19,6 @@ interface TransportCoreOptions {
   scope: Extract<LogScope, 'pipe' | 'ws'>
 }
 
-/** Owns transport state and bounded delivery, but no concrete I/O. */
 export default class TransportCore {
   readonly #closeIO: () => void
   readonly #options: TransportOptions

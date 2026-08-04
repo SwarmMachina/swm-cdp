@@ -16,11 +16,6 @@ interface WebSocketMessageEvent extends Event {
   readonly data?: unknown
 }
 
-/**
- * Keep the injectable seam at the native EventTarget boundary. The transport
- * already owns connection state, deadlines, buffering, and event conversion;
- * a second stateful WebSocket adapter only duplicates that lifecycle.
- */
 export type CreateWebSocket = (url: string) => WebSocketLike
 
 interface WebSocketTransportOptions {

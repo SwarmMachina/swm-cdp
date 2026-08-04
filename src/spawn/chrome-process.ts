@@ -80,6 +80,7 @@ export class ChromeProcess {
   readonly #platform: NodeJS.Platform
   readonly #terminateWindows: TerminateWindows
   readonly #events = new EventRegistry<ProcessEvents>()
+
   #child: ChildProcess | null = null
   #childHandlers: {
     error: (error: Error) => void

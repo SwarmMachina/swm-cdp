@@ -1,7 +1,6 @@
 import type { TargetInfo } from '../../types.js'
 import type Connection from './connection.js'
 
-/** Owns the mutable state and lifecycle of one flattened CDP session. */
 export default class SessionAttachment {
   readonly parentSessionId?: string
   readonly sessionId: string

@@ -12,7 +12,6 @@ type UserDataDirectoryOptions = Pick<
   'cleanupUserDataDir' | 'debugSpawn' | 'logger' | 'userDataDir' | 'userDataRoot'
 >
 
-/** Owns the lifecycle of a Chrome user-data directory. */
 export default class UserDataDirectory {
   readonly created: boolean
   readonly path: string

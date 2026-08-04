@@ -43,7 +43,6 @@ type CommandArguments<Method extends CommandName> =
 type EventPayload<Event extends EventName> = ProtocolMapping.Events[Event] extends [infer Payload] ? Payload : undefined
 type CustomMethod<Method extends string> = Method extends CommandName ? never : Method
 
-/** Composes request, event, lifecycle and flattened-session capabilities. */
 export class Connection {
   readonly #dispatcher: RequestDispatcher
   readonly #transport: Transport

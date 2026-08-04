@@ -3,11 +3,6 @@ export interface CdpEnvelope {
   sessionId?: string
 }
 
-/**
- * Extract routing fields without allocating the full JSON object. The scan
- * still walks the complete envelope so truncated messages fall back to the
- * strict JSON.parse error path.
- */
 export default function scanCdpEnvelope(json: string): CdpEnvelope | null {
   let index = skipWhitespace(json, 0)
 
