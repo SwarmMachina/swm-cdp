@@ -15,10 +15,16 @@ test('connects to headless Chrome running in Docker', async (t) => {
   }
 
   const browser = await version(discoveryUrl)
+  const endpoint = new URL(discoveryUrl)
+  const port = Number(endpoint.port || (endpoint.protocol === 'https:' ? 443 : 80))
 
   assert.equal(typeof browser.webSocketDebuggerUrl, 'string')
 
-  const cdp = await connect(browser.webSocketDebuggerUrl!)
+  const cdp = await connect({
+    host: endpoint.hostname,
+    port,
+    secure: endpoint.protocol === 'https:'
+  })
 
   try {
     assert.equal(await runCdpScenario(cdp), browser.Browser)

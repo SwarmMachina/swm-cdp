@@ -46,7 +46,13 @@ test('spawnChrome covers evaluate, navigate, screenshot, flat sessions, and trac
             throw new Error('Expected a WebSocket transport')
           }
 
-          remote = await connect(chrome.transport.url)
+          const endpoint = new URL(chrome.transport.url)
+
+          remote = await connect({
+            host: endpoint.hostname,
+            port: Number(endpoint.port),
+            secure: endpoint.protocol === 'wss:'
+          })
           const remoteVersion = await remote.send('Browser.getVersion')
 
           assert.equal(remoteVersion.product, product)
