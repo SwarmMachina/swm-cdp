@@ -28,6 +28,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+        with:
+          fetch-depth: 0
 
       - name: Setup Node.js
         uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6
@@ -37,13 +39,13 @@ jobs:
       - name: Enable pnpm
         run: corepack enable
 
-      - name: Verify tag matches package version
+      - name: Verify tag is released from master
         if: startsWith(github.ref, 'refs/tags/v')
-        shell: bash
-        run: |
-          tag_version="${GITHUB_REF_NAME#v}"
-          package_version="$(node -p "require('./package.json').version")"
-          test "$tag_version" = "$package_version"
+        run: git merge-base --is-ancestor "$GITHUB_SHA" refs/remotes/origin/master
+
+      - name: Verify release metadata matches tag
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: node --experimental-strip-types scripts/verify-release.ts "$GITHUB_REF_NAME"
 
       - name: Install
         run: pnpm install --frozen-lockfile --ignore-scripts
@@ -288,13 +290,13 @@ jobs:
       - name: Build package
         run: pnpm run build
 
-      - name: Pack tested artifact
-        run: mkdir -p package-artifacts && pnpm pack --pack-destination package-artifacts
+      - name: Build release artifact
+        run: pnpm run release:artifact
 
       - name: Consumer smoke
         shell: bash
         run: |
-          tgz="$(find "$GITHUB_WORKSPACE/package-artifacts" -name '*.tgz' -type f -print -quit)"
+          tgz="$(find "$GITHUB_WORKSPACE/release-artifact" -name '*.tgz' -type f -print -quit)"
           test -n "$tgz"
           mkdir consumer
           cp test/installed-smoke.ts consumer/smoke.mjs
@@ -303,11 +305,11 @@ jobs:
           npm install "$tgz" --omit=dev --ignore-scripts
           node smoke.mjs
 
-      - name: Upload tested package
+      - name: Upload release artifact
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
-          name: swm-cdp-package
-          path: package-artifacts/*.tgz
+          name: swm-cdp-release-artifact
+          path: release-artifact/
           if-no-files-found: error
           retention-days: 14
 
@@ -320,26 +322,37 @@ jobs:
     permissions:
       contents: read
       id-token: write
+    environment: npm-publish
 
     steps:
+      - name: Checkout trusted release commit
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+
       - name: Setup Node.js
         uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6
         with:
           node-version: '24'
           registry-url: https://registry.npmjs.org
 
-      - name: Download tested package
+      - name: Download release artifact
         uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
         with:
-          name: swm-cdp-package
-          path: dist
+          name: swm-cdp-release-artifact
+          path: release-artifact
+
+      - name: Verify downloaded artifact integrity
+        working-directory: release-artifact
+        run: sha256sum --check SHA256SUMS
 
       - name: Bootstrap first package version
         if: github.ref_name == 'v0.1.0'
-        run: npm publish dist/*.tgz --access public --provenance
+        run: node --experimental-strip-types scripts/publish-release-artifact.ts
         env:
+          RELEASE_ARTIFACT_DIR: ${{ github.workspace }}/release-artifact
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
       - name: Publish through trusted publishing
         if: github.ref_name != 'v0.1.0'
-        run: npm publish dist/*.tgz --access public
+        run: node --experimental-strip-types scripts/publish-release-artifact.ts
+        env:
+          RELEASE_ARTIFACT_DIR: ${{ github.workspace }}/release-artifact

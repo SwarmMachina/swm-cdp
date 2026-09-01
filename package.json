@@ -59,6 +59,9 @@
     "test:e2e:container": "pnpm run build:test && node --test --test-concurrency=1 .test-dist/test/e2e/container-*.test.js",
     "test": "pnpm run test:unit",
     "release:gate": "pnpm run check && pnpm run test:unit && pnpm run test:types && pnpm run test:leak && pnpm run profile:ci && pnpm run build",
+    "release:verify-tag": "node --experimental-strip-types scripts/verify-release.ts",
+    "release:artifact": "node --experimental-strip-types scripts/build-release-artifact.ts",
+    "release:publish": "node --experimental-strip-types scripts/publish-release-artifact.ts",
     "source-policy": "node --experimental-strip-types scripts/source-policy.ts",
     "prepublishOnly": "pnpm run release:gate"
   },

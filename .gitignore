@@ -21,6 +21,7 @@ dist/
 .test-dist/
 tmp/
 temp/
+/release-artifact/
 
 # Coverage / Test
 coverage/
