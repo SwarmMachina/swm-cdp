@@ -40,13 +40,13 @@ pnpm add @swarmmachina/swm-cdp
 
 ## Quick Start
 
-The examples below are the canonical usage model: `connect()` owns one remote client connection, while `spawnChrome()` owns both Chrome and its client. Both paths expose the same typed `CdpClient` facade.
+`connect()` owns one remote client connection; `spawnChrome()` owns both Chrome and its client. Both return the same typed `CdpClient`.
 
 ### Connect to Running Chrome
 
 Start Chrome with a loopback debugging endpoint, then connect to its browser-level WebSocket:
 
-```time
+```typescript
 import connect from '@swarmmachina/swm-cdp'
 
 const cdp = await connect({ host: '127.0.0.1', port: 9222 })
@@ -63,7 +63,7 @@ try {
 
 ### Launch Owned Chrome
 
-```time
+```typescript
 import { spawnChrome } from '@swarmmachina/swm-cdp'
 
 const browser = spawnChrome({
@@ -96,11 +96,11 @@ try {
 
 ### Commands, Events, and Sessions
 
-The launch example is also the reference for commands, events, and flattened sessions. `send()` accepts a generated CDP method and payload, `once()` waits for one generated event, and the optional `sessionId` is written to the flattened CDP envelope. Persistent `on()` listeners return an unsubscribe function and receive `sessionId` as their second argument.
+`send()` accepts a generated CDP method and payload, `once()` waits for one generated event, and the optional `sessionId` is written to the flattened CDP envelope. Persistent `on()` listeners return an unsubscribe function and receive `sessionId` as their second argument.
 
 Keep the returned function and call it when the subscription is no longer needed:
 
-```time
+```typescript
 await cdp.send('Runtime.enable', undefined, sessionId)
 
 const unsubscribe = cdp.on('Runtime.consoleAPICalled', (event, eventSessionId) => {
@@ -120,7 +120,7 @@ Calling `unsubscribe()` more than once is safe.
 
 ### Discovery
 
-```time
+```typescript
 import { closeTarget, createTarget, list, version } from '@swarmmachina/swm-cdp'
 
 const endpoint = { host: '127.0.0.1', port: 9222 }
@@ -135,8 +135,6 @@ await closeTarget(target.id, endpoint)
 Discovery uses the built-in `fetch`; it does not require an open CDP client.
 
 ## API Documentation
-
-Short API fragments in this section use the `cdp` client created in Quick Start; they refine that model rather than introduce a second usage pattern.
 
 ### `connect(target, options?)`
 
@@ -187,7 +185,7 @@ Invalid targets and unknown or invalid options throw `TypeError` before attachme
 
 `send()` supports per-operation cancellation and deadlines:
 
-```time
+```typescript
 const controller = new AbortController()
 
 const result = await cdp.send(
@@ -200,7 +198,7 @@ const result = await cdp.send(
 
 For commands without parameters, pass `undefined` before `sessionId` or operation options. Unknown protocol extensions can be called with an explicit result type:
 
-```time
+```typescript
 const result = await cdp.send<{ value: string }>('Vendor.customMethod', { key: 'value' })
 ```
 
@@ -314,7 +312,7 @@ The same functions and discovery types are available from `@swarmmachina/swm-cdp
 Enabled diagnostics are written to `console` by default. Configure `logger` with a `LogSink` callback to receive
 structured `LogEntry` records instead:
 
-```time
+```typescript
 import connect, { type LogSink } from '@swarmmachina/swm-cdp'
 
 const logger: LogSink = (entry) => {
@@ -348,7 +346,7 @@ The `debugProtocol`, `debugTransport`, and `debugSpawn` flags enable diagnostics
 
 ### Error Handling
 
-```time
+```typescript
 import { CdpError } from '@swarmmachina/swm-cdp'
 
 try {
@@ -405,7 +403,7 @@ There is intentionally no dynamic-domain compatibility layer.
 | `client.send(method, params, sessionId)`        | `cdp.send(method, params, sessionId)`                |
 | `await client.close()`                          | `await cdp.close()`                                  |
 
-Use `chrome-remote-interface` when dynamic domain objects are more valuable than cold-start cost, dependency count, or event-storm throughput. It is mature and convenient for exploratory scripts. `swm-cdp` targets typed services and high-volume CDP workloads where a minimal API and predictable hot path matter.
+Use `chrome-remote-interface` for exploratory scripts, where dynamic domain objects matter more than cold-start cost or dependency count. `swm-cdp` targets typed services and high-volume CDP workloads where a minimal API and predictable hot path matter.
 
 ## Performance Status
 
@@ -430,12 +428,6 @@ pnpm run test:e2e
 pnpm run bench:protocol -- --iterations 50000 --warmup 5000 --concurrency 128
 pnpm run bench:chrome -- --iterations 10000 --warmup 1000 --concurrency 32 --transport both
 ```
-
-Both benchmark commands print a Markdown report containing throughput, p95/p99 latency, ELU, and memory measurements under the parameters shown in the commands. The unit suite covers protocol interleaving and sessions, request cleanup, native WebSocket integration, selective scanning, spawn cleanup, and discovery. The Chrome e2e suite covers both transports, concurrent flattened sessions, timeout recovery, pending-request pressure, discovery target lifecycle, reconnect, graceful shutdown, and unexpected process exit. The release gate adds strict TypeScript checks for source, tests, scripts, benchmarks, and public contracts, plus leak checks, profiling, and build verification. CI also packages and smoke-tests the tarball, runs supported Node.js versions, and exercises a pinned headless Chrome container, including a differential check against CRI.
-
-## Release
-
-CI publishes only a `vX.Y.Z` tag whose version exactly matches `package.json`. It builds and packs the package once, installs that exact tarball into a clean consumer project, and publishes it only after the smoke test passes. The first `v0.1.0` publication uses the repository npm token with provenance; later releases use npm trusted publishing.
 
 ## Stability
 
