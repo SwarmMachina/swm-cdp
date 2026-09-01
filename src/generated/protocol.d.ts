@@ -381,6 +381,11 @@ export namespace Protocol {
              * @experimental
              */
             timeout?: Runtime.TimeDelta;
+            /**
+             * Specifies the scope number to evaluate the expression in (default: 0, innermost scope).
+             * @experimental
+             */
+            scopeNumber?: integer;
         }
 
         export interface EvaluateOnCallFrameResponse {
@@ -3188,8 +3193,31 @@ export namespace Protocol {
             removeAdFrames: Page.FrameId[];
         }
 
+        /**
+         * An ad script.
+         * Note: when the script is a transitive ad script, we only fill in the
+         * immediate ancestor script in the provenance's adScriptAncestry field (as its
+         * first entry), rather than filling in the full ancestry. This saves work for
+         * the backend, and the frontend can reconstruct the full ancestry if
+         * necessary.
+         */
+        export interface AdScript {
+            /**
+             * The script ID.
+             */
+            scriptId: Runtime.ScriptId;
+            /**
+             * The ad provenance.
+             */
+            provenance: Network.AdProvenance;
+        }
+
         export interface GetAdMetricsResponse {
             metrics: AdMetrics;
+        }
+
+        export interface GetAdScriptsResponse {
+            newScripts: AdScript[];
         }
     }
 
@@ -3719,7 +3747,7 @@ export namespace Protocol {
 
         export type UnencodedDigestError = ('MalformedDictionary' | 'UnknownAlgorithm' | 'IncorrectDigestType' | 'IncorrectDigestLength');
 
-        export type ConnectionAllowlistError = ('InvalidHeader' | 'MoreThanOneList' | 'ItemNotInnerList' | 'InvalidAllowlistItemType' | 'ReportingEndpointNotToken' | 'InvalidUrlPattern');
+        export type ConnectionAllowlistError = ('InvalidHeader' | 'MoreThanOneList' | 'ItemNotInnerList' | 'InvalidAllowlistItemType' | 'ReportingEndpointNotToken' | 'InvalidUrlPattern' | 'IFrameAttributeLoosensEmbeddingRequirement' | 'InvalidAllowConnectionAllowlistFrom' | 'EmbeddingRequirementNotSatisfied');
 
         /**
          * Details for issues about documents in Quirks Mode
@@ -3833,7 +3861,7 @@ export namespace Protocol {
          * third_party/blink/public/mojom/devtools/inspector_issue.mojom to include
          * all cases except for success.
          */
-        export type FederatedAuthRequestIssueReason = ('ShouldEmbargo' | 'TooManyRequests' | 'WellKnownHttpNotFound' | 'WellKnownNoResponse' | 'WellKnownInvalidResponse' | 'WellKnownListEmpty' | 'WellKnownInvalidContentType' | 'ConfigNotInWellKnown' | 'WellKnownTooBig' | 'ConfigHttpNotFound' | 'ConfigNoResponse' | 'ConfigInvalidResponse' | 'ConfigInvalidContentType' | 'IdpNotPotentiallyTrustworthy' | 'DisabledInSettings' | 'DisabledInFlags' | 'ErrorFetchingSignin' | 'InvalidSigninResponse' | 'AccountsHttpNotFound' | 'AccountsNoResponse' | 'AccountsInvalidResponse' | 'AccountsListEmpty' | 'AccountsInvalidContentType' | 'IdTokenHttpNotFound' | 'IdTokenNoResponse' | 'IdTokenInvalidResponse' | 'IdTokenIdpErrorResponse' | 'IdTokenCrossSiteIdpErrorResponse' | 'IdTokenInvalidRequest' | 'IdTokenInvalidContentType' | 'ErrorIdToken' | 'Canceled' | 'RpPageNotVisible' | 'SilentMediationFailure' | 'NotSignedInWithIdp' | 'MissingTransientUserActivation' | 'ReplacedByActiveMode' | 'RelyingPartyOriginIsOpaque' | 'TypeNotMatching' | 'UiDismissedNoEmbargo' | 'CorsError' | 'SuppressedBySegmentationPlatform');
+        export type FederatedAuthRequestIssueReason = ('ShouldEmbargo' | 'TooManyRequests' | 'WellKnownHttpNotFound' | 'WellKnownNoResponse' | 'WellKnownBlockedByConnectionAllowlist' | 'WellKnownInvalidResponse' | 'WellKnownListEmpty' | 'WellKnownInvalidContentType' | 'ConfigNotInWellKnown' | 'WellKnownTooBig' | 'ConfigHttpNotFound' | 'ConfigNoResponse' | 'ConfigBlockedByConnectionAllowlist' | 'ConfigInvalidResponse' | 'ConfigInvalidContentType' | 'IdpNotPotentiallyTrustworthy' | 'DisabledInSettings' | 'DisabledInFlags' | 'ErrorFetchingSignin' | 'InvalidSigninResponse' | 'AccountsHttpNotFound' | 'AccountsNoResponse' | 'AccountsBlockedByConnectionAllowlist' | 'AccountsInvalidResponse' | 'AccountsListEmpty' | 'AccountsInvalidContentType' | 'IdTokenHttpNotFound' | 'IdTokenNoResponse' | 'IdTokenBlockedByConnectionAllowlist' | 'IdTokenInvalidResponse' | 'IdTokenIdpErrorResponse' | 'IdTokenCrossSiteIdpErrorResponse' | 'IdTokenInvalidRequest' | 'IdTokenInvalidContentType' | 'ErrorIdToken' | 'Canceled' | 'RpPageNotVisible' | 'SilentMediationFailure' | 'NotSignedInWithIdp' | 'MissingTransientUserActivation' | 'ReplacedByActiveMode' | 'RelyingPartyOriginIsOpaque' | 'TypeNotMatching' | 'UiDismissedNoEmbargo' | 'CorsError' | 'SuppressedBySegmentationPlatform');
 
         export interface FederatedAuthUserInfoRequestIssueDetails {
             federatedAuthUserInfoRequestIssueReason: FederatedAuthUserInfoRequestIssueReason;
@@ -4875,6 +4903,15 @@ export namespace Protocol {
             arguments: string[];
         }
 
+        export interface AddMockCameraRequest {
+            /**
+             * Required non-empty identifier for the mock camera. This is mapped to an
+             * internal virtual-device identifier and is not the MediaDeviceInfo.deviceId
+             * exposed to the page.
+             */
+            deviceId: string;
+        }
+
         export interface GetHistogramsRequest {
             /**
              * Requested substring in name. Only histograms which have query as a
@@ -4990,6 +5027,18 @@ export namespace Protocol {
 
         export interface AddPrivacySandboxEnrollmentOverrideRequest {
             url: string;
+        }
+
+        export interface GetGlobalPrivacyControlResponse {
+            gpc: boolean;
+        }
+
+        export interface SetGlobalPrivacyControlRequest {
+            gpc: boolean;
+        }
+
+        export interface SetGlobalPrivacyControlResponse {
+            gpc: boolean;
         }
 
         /**
@@ -8120,6 +8169,17 @@ export namespace Protocol {
             nodeIds: NodeId[];
         }
 
+        export interface ForceShowInterestRequest {
+            /**
+             * Id of the interest invoker HTMLElement.
+             */
+            nodeId: NodeId;
+            /**
+             * If true, opens and holds interest. If false, releases forced interest.
+             */
+            enable: boolean;
+        }
+
         /**
          * Fired when `Element`'s attribute is modified.
          */
@@ -9623,6 +9683,10 @@ export namespace Protocol {
             insets: SafeAreaInsets;
         }
 
+        export interface SetVirtualKeyboardGeometryOverrideRequest {
+            keyboardRect?: DOM.Rect;
+        }
+
         export const enum SetDeviceMetricsOverrideRequestScrollbarType {
             Overlay = 'overlay',
             Default = 'default',
@@ -9965,6 +10029,21 @@ export namespace Protocol {
              * Hardware concurrency to report
              */
             hardwareConcurrency: integer;
+        }
+
+        export const enum SetCPUPerformanceOverrideRequestPerformanceTier {
+            Unknown = 'unknown',
+            Low = 'low',
+            Mid = 'mid',
+            High = 'high',
+            Ultra = 'ultra',
+        }
+
+        export interface SetCPUPerformanceOverrideRequest {
+            /**
+             * Override value. Omitting the parameter disables the override.
+             */
+            performanceTier?: ('unknown' | 'low' | 'mid' | 'high' | 'ultra');
         }
 
         export interface SetUserAgentOverrideRequest {
@@ -12522,11 +12601,6 @@ export namespace Protocol {
         export type RequestId = string;
 
         /**
-         * Unique intercepted request identifier.
-         */
-        export type InterceptionId = string;
-
-        /**
          * Network level fetch failure reason.
          */
         export type ErrorReason = ('Failed' | 'Aborted' | 'TimedOut' | 'AccessDenied' | 'ConnectionClosed' | 'ConnectionReset' | 'ConnectionRefused' | 'ConnectionAborted' | 'ConnectionFailed' | 'NameNotResolved' | 'InternetDisconnected' | 'AddressUnreachable' | 'BlockedByClient' | 'BlockedByResponse');
@@ -13509,33 +13583,6 @@ export namespace Protocol {
         }
 
         /**
-         * Stages of the interception to begin intercepting. Request will intercept before the request is
-         * sent. Response will intercept after the response is received.
-         * @experimental
-         */
-        export type InterceptionStage = ('Request' | 'HeadersReceived');
-
-        /**
-         * Request pattern for interception.
-         * @experimental
-         */
-        export interface RequestPattern {
-            /**
-             * Wildcards (`'*'` -> zero or more, `'?'` -> exactly one) are allowed. Escape character is
-             * backslash. Omitting is equivalent to `"*"`.
-             */
-            urlPattern?: string;
-            /**
-             * If set, only requests for matching resource types will be intercepted.
-             */
-            resourceType?: ResourceType;
-            /**
-             * Stage at which to begin intercepting requests. Default is Request.
-             */
-            interceptionStage?: InterceptionStage;
-        }
-
-        /**
          * Information about a signed exchange signature.
          * https://wicg.github.io/webpackage/draft-yasskin-httpbis-origin-signed-exchanges-impl.html#rfc.section.3.1
          * @experimental
@@ -13659,12 +13706,6 @@ export namespace Protocol {
              */
             errors?: SignedExchangeError[];
         }
-
-        /**
-         * List of content encodings supported by the backend.
-         * @experimental
-         */
-        export type ContentEncoding = ('deflate' | 'gzip' | 'br' | 'zstd');
 
         /**
          * @experimental
@@ -13890,6 +13931,9 @@ export namespace Protocol {
             filterlistRule?: string;
             /**
              * The script ancestry that created the ad, if any.
+             * Note: depending on the context, this may represent the full ancestry up
+             * to the root script, or it may contain only one script representing the
+             * immediate ancestor.
              */
             adScriptAncestry?: AdAncestry;
         }
@@ -14166,7 +14210,7 @@ export namespace Protocol {
          * A fetch result for a device bound session creation or refresh.
          * @experimental
          */
-        export type DeviceBoundSessionFetchResult = ('Success' | 'SigningKeyGenerationError' | 'AttestationKeyGenerationError' | 'SigningError' | 'TransientSigningError' | 'ServerRequestedTermination' | 'InvalidSessionId' | 'InvalidChallenge' | 'TooManyChallenges' | 'InvalidFetcherUrl' | 'InvalidRefreshUrl' | 'TransientHttpError' | 'ScopeOriginSameSiteMismatch' | 'RefreshUrlSameSiteMismatch' | 'MismatchedSessionId' | 'MissingScope' | 'NoCredentials' | 'SubdomainRegistrationWellKnownUnavailable' | 'SubdomainRegistrationUnauthorized' | 'SubdomainRegistrationWellKnownMalformed' | 'SessionProviderWellKnownUnavailable' | 'RelyingPartyWellKnownUnavailable' | 'FederatedKeyThumbprintMismatch' | 'InvalidFederatedSessionUrl' | 'InvalidFederatedKey' | 'TooManyRelyingOriginLabels' | 'BoundCookieSetForbidden' | 'NetError' | 'ProxyError' | 'EmptySessionConfig' | 'InvalidCredentialsConfig' | 'InvalidCredentialsType' | 'InvalidCredentialsEmptyName' | 'InvalidCredentialsCookie' | 'PersistentHttpError' | 'RegistrationAttemptedChallenge' | 'InvalidScopeOrigin' | 'ScopeOriginContainsPath' | 'RefreshInitiatorNotString' | 'RefreshInitiatorInvalidHostPattern' | 'InvalidScopeSpecification' | 'MissingScopeSpecificationType' | 'EmptyScopeSpecificationDomain' | 'EmptyScopeSpecificationPath' | 'InvalidScopeSpecificationType' | 'InvalidScopeIncludeSite' | 'MissingScopeIncludeSite' | 'FederatedNotAuthorizedByProvider' | 'FederatedNotAuthorizedByRelyingParty' | 'SessionProviderWellKnownMalformed' | 'SessionProviderWellKnownHasProviderOrigin' | 'RelyingPartyWellKnownMalformed' | 'RelyingPartyWellKnownHasRelyingOrigins' | 'InvalidFederatedSessionProviderSessionMissing' | 'InvalidFederatedSessionWrongProviderOrigin' | 'InvalidCredentialsCookieCreationTime' | 'InvalidCredentialsCookieName' | 'InvalidCredentialsCookieParsing' | 'InvalidCredentialsCookieUnpermittedAttribute' | 'InvalidCredentialsCookieInvalidDomain' | 'InvalidCredentialsCookiePrefix' | 'InvalidScopeRulePath' | 'InvalidScopeRuleHostPattern' | 'ScopeRuleOriginScopedHostPatternMismatch' | 'ScopeRuleSiteScopedHostPatternMismatch' | 'SigningQuotaExceeded' | 'InvalidConfigJson' | 'InvalidFederatedSessionProviderFailedToRestoreKey' | 'FailedToUnwrapKey' | 'SessionDeletedDuringRefresh' | 'CrossOriginRegistrationSiteNotIncluded' | 'InvalidPreProvisionedKeyInitiatorMissing' | 'PreProvisionedKeyAccessNotGranted' | 'PreProvisionedKeyNotFound');
+        export type DeviceBoundSessionFetchResult = ('Success' | 'SigningKeyGenerationError' | 'AttestationKeyGenerationError' | 'SigningError' | 'TransientSigningError' | 'ServerRequestedTermination' | 'InvalidSessionId' | 'InvalidChallenge' | 'TooManyChallenges' | 'InvalidFetcherUrl' | 'InvalidRefreshUrl' | 'TransientHttpError' | 'ScopeOriginSameSiteMismatch' | 'RefreshUrlSameSiteMismatch' | 'MismatchedSessionId' | 'MissingScope' | 'NoCredentials' | 'SubdomainRegistrationWellKnownUnavailable' | 'SubdomainRegistrationUnauthorized' | 'SubdomainRegistrationWellKnownMalformed' | 'SessionProviderWellKnownUnavailable' | 'RelyingPartyWellKnownUnavailable' | 'FederatedKeyThumbprintMismatch' | 'InvalidFederatedSessionUrl' | 'InvalidFederatedKey' | 'TooManyRelyingOriginLabels' | 'BoundCookieSetForbidden' | 'NetError' | 'ProxyError' | 'EmptySessionConfig' | 'InvalidCredentialsConfig' | 'InvalidCredentialsType' | 'InvalidCredentialsEmptyName' | 'InvalidCredentialsCookie' | 'PersistentHttpError' | 'RegistrationAttemptedChallenge' | 'InvalidScopeOrigin' | 'ScopeOriginContainsPath' | 'RefreshInitiatorNotString' | 'RefreshInitiatorInvalidHostPattern' | 'InvalidScopeSpecification' | 'MissingScopeSpecificationType' | 'EmptyScopeSpecificationDomain' | 'EmptyScopeSpecificationPath' | 'InvalidScopeSpecificationType' | 'InvalidScopeIncludeSite' | 'MissingScopeIncludeSite' | 'FederatedNotAuthorizedByProvider' | 'FederatedNotAuthorizedByRelyingParty' | 'SessionProviderWellKnownMalformed' | 'SessionProviderWellKnownHasProviderOrigin' | 'RelyingPartyWellKnownMalformed' | 'RelyingPartyWellKnownHasRelyingOrigins' | 'InvalidFederatedSessionProviderSessionMissing' | 'InvalidFederatedSessionWrongProviderOrigin' | 'InvalidCredentialsCookieCreationTime' | 'InvalidCredentialsCookieName' | 'InvalidCredentialsCookieParsing' | 'InvalidCredentialsCookieUnpermittedAttribute' | 'InvalidCredentialsCookieInvalidDomain' | 'InvalidCredentialsCookiePrefix' | 'InvalidScopeRulePath' | 'InvalidScopeRuleHostPattern' | 'ScopeRuleOriginScopedHostPatternMismatch' | 'ScopeRuleSiteScopedHostPatternMismatch' | 'SigningQuotaExceeded' | 'InvalidConfigJson' | 'InvalidFederatedSessionProviderFailedToRestoreKey' | 'FailedToUnwrapKey' | 'SessionDeletedDuringRefresh' | 'CrossOriginRegistrationSiteNotIncluded' | 'InvalidPreProvisionedKeyInitiatorMissing' | 'PreProvisionedKeyAccessNotGranted' | 'PreProvisionedKeyNotFound' | 'AttestationCertificationError' | 'AttestationSigningError');
 
         /**
          * Details about a failed device bound session network request.
@@ -14223,6 +14267,7 @@ export namespace Protocol {
             SigningQuotaExceeded = 'SigningQuotaExceeded',
             RefreshedAsWaiter = 'RefreshedAsWaiter',
             TransientSigningError = 'TransientSigningError',
+            InScopeRefreshNotYetNeeded = 'InScopeRefreshNotYetNeeded',
         }
 
         /**
@@ -14233,7 +14278,7 @@ export namespace Protocol {
             /**
              * The result of a refresh.
              */
-            refreshResult: ('Refreshed' | 'InitializedService' | 'Unreachable' | 'ServerError' | 'FatalError' | 'SigningQuotaExceeded' | 'RefreshedAsWaiter' | 'TransientSigningError');
+            refreshResult: ('Refreshed' | 'InitializedService' | 'Unreachable' | 'ServerError' | 'FatalError' | 'SigningQuotaExceeded' | 'RefreshedAsWaiter' | 'TransientSigningError' | 'InScopeRefreshNotYetNeeded');
             /**
              * If there was a fetch attempt, the result of that.
              */
@@ -14331,13 +14376,6 @@ export namespace Protocol {
             includeCredentials: boolean;
         }
 
-        export interface SetAcceptedEncodingsRequest {
-            /**
-             * List of accepted content encodings.
-             */
-            encodings: ContentEncoding[];
-        }
-
         export interface CanClearBrowserCacheResponse {
             /**
              * True if browser cache can be cleared.
@@ -14357,44 +14395,6 @@ export namespace Protocol {
              * True if emulation of network conditions is supported.
              */
             result: boolean;
-        }
-
-        export interface ContinueInterceptedRequestRequest {
-            interceptionId: InterceptionId;
-            /**
-             * If set this causes the request to fail with the given reason. Passing `Aborted` for requests
-             * marked with `isNavigationRequest` also cancels the navigation. Must not be set in response
-             * to an authChallenge.
-             */
-            errorReason?: ErrorReason;
-            /**
-             * If set the requests completes using with the provided base64 encoded raw response, including
-             * HTTP status line and headers etc... Must not be set in response to an authChallenge. (Encoded as a base64 string when passed over JSON)
-             */
-            rawResponse?: string;
-            /**
-             * If set the request url will be modified in a way that's not observable by page. Must not be
-             * set in response to an authChallenge.
-             */
-            url?: string;
-            /**
-             * If set this allows the request method to be overridden. Must not be set in response to an
-             * authChallenge.
-             */
-            method?: string;
-            /**
-             * If set this allows postData to be set. Must not be set in response to an authChallenge.
-             */
-            postData?: string;
-            /**
-             * If set this allows the request headers to be changed. Must not be set in response to an
-             * authChallenge.
-             */
-            headers?: Headers;
-            /**
-             * Response to a requestIntercepted with an authChallenge. Must not be set otherwise.
-             */
-            authChallengeResponse?: AuthChallengeResponse;
         }
 
         export interface DeleteCookiesRequest {
@@ -14625,32 +14625,6 @@ export namespace Protocol {
             base64Encoded: boolean;
         }
 
-        export interface GetResponseBodyForInterceptionRequest {
-            /**
-             * Identifier for the intercepted request to get body for.
-             */
-            interceptionId: InterceptionId;
-        }
-
-        export interface GetResponseBodyForInterceptionResponse {
-            /**
-             * Response body.
-             */
-            body: string;
-            /**
-             * True, if content was sent as base64.
-             */
-            base64Encoded: boolean;
-        }
-
-        export interface TakeResponseBodyForInterceptionAsStreamRequest {
-            interceptionId: InterceptionId;
-        }
-
-        export interface TakeResponseBodyForInterceptionAsStreamResponse {
-            stream: IO.StreamHandle;
-        }
-
         export interface ReplayXHRRequest {
             /**
              * Identifier of XHR to replay.
@@ -14800,14 +14774,6 @@ export namespace Protocol {
              * Whether to attach a page script stack for debugging purpose.
              */
             enabled: boolean;
-        }
-
-        export interface SetRequestInterceptionRequest {
-            /**
-             * Requests matching any of these patterns will be forwarded and wait for the corresponding
-             * continueInterceptedRequest call.
-             */
-            patterns: RequestPattern[];
         }
 
         export interface SetUserAgentOverrideRequest {
@@ -15017,69 +14983,6 @@ export namespace Protocol {
              * Total number of bytes received for this request.
              */
             encodedDataLength: number;
-        }
-
-        /**
-         * Details of an intercepted HTTP request, which must be either allowed, blocked, modified or
-         * mocked.
-         * Deprecated, use Fetch.requestPaused instead.
-         * @deprecated
-         * @experimental
-         */
-        export interface RequestInterceptedEvent {
-            /**
-             * Each request the page makes will have a unique id, however if any redirects are encountered
-             * while processing that fetch, they will be reported with the same id as the original fetch.
-             * Likewise if HTTP authentication is needed then the same fetch id will be used.
-             */
-            interceptionId: InterceptionId;
-            request: Request;
-            /**
-             * The id of the frame that initiated the request.
-             */
-            frameId: Page.FrameId;
-            /**
-             * How the requested resource will be used.
-             */
-            resourceType: ResourceType;
-            /**
-             * Whether this is a navigation request, which can abort the navigation completely.
-             */
-            isNavigationRequest: boolean;
-            /**
-             * Set if the request is a navigation that will result in a download.
-             * Only present after response is received from the server (i.e. HeadersReceived stage).
-             */
-            isDownload?: boolean;
-            /**
-             * Redirect location, only sent if a redirect was intercepted.
-             */
-            redirectUrl?: string;
-            /**
-             * Details of the Authorization Challenge encountered. If this is set then
-             * continueInterceptedRequest must contain an authChallengeResponse.
-             */
-            authChallenge?: AuthChallenge;
-            /**
-             * Response error if intercepted at response stage or if redirect occurred while intercepting
-             * request.
-             */
-            responseErrorReason?: ErrorReason;
-            /**
-             * Response code if intercepted at response stage or if redirect occurred while intercepting
-             * request or auth retry occurred.
-             */
-            responseStatusCode?: integer;
-            /**
-             * Response headers if intercepted at the response stage or if redirect occurred while
-             * intercepting request or auth retry occurred.
-             */
-            responseHeaders?: Headers;
-            /**
-             * If the intercepted request had a corresponding requestWillBeSent event fired for it, then
-             * this requestId will be the same as the requestId present in the requestWillBeSent event.
-             */
-            requestId?: RequestId;
         }
 
         /**
@@ -15441,7 +15344,7 @@ export namespace Protocol {
          */
         export interface DirectTCPSocketAbortedEvent {
             identifier: RequestId;
-            errorMessage: string;
+            errorMessage: ErrorReason;
             timestamp: MonotonicTime;
         }
 
@@ -15526,7 +15429,7 @@ export namespace Protocol {
          */
         export interface DirectUDPSocketAbortedEvent {
             identifier: RequestId;
-            errorMessage: string;
+            errorMessage: ErrorReason;
             timestamp: MonotonicTime;
         }
 
@@ -16720,11 +16623,11 @@ export namespace Protocol {
              * extended scope if the manifest has scope extensions and the flags
              * `DesktopPWAsLinkCapturingWithScopeExtensions` and
              * `WebAppEnableScopeExtensions` are enabled.
-             *
+             * 
              * Note, the API does not support resetting the linkCapturing to the
              * initial value, uninstalling and installing the web app again will reset
              * it.
-             *
+             * 
              * TODO(crbug.com/339453269): Setting this value on ChromeOS is not
              * supported yet.
              */
@@ -16785,7 +16688,7 @@ export namespace Protocol {
          * in services/network/public/cpp/permissions_policy/permissions_policy_features.json5.
          * @experimental
          */
-        export type PermissionsPolicyFeature = ('accelerometer' | 'all-screens-capture' | 'ambient-light-sensor' | 'aria-notify' | 'autofill' | 'autoplay' | 'bluetooth' | 'browsing-topics' | 'camera' | 'captured-surface-control' | 'ch-dpr' | 'ch-device-memory' | 'ch-downlink' | 'ch-ect' | 'ch-prefers-color-scheme' | 'ch-prefers-reduced-motion' | 'ch-prefers-reduced-transparency' | 'ch-rtt' | 'ch-save-data' | 'ch-ua' | 'ch-ua-arch' | 'ch-ua-bitness' | 'ch-ua-high-entropy-values' | 'ch-ua-platform' | 'ch-ua-model' | 'ch-ua-mobile' | 'ch-ua-form-factors' | 'ch-ua-full-version' | 'ch-ua-full-version-list' | 'ch-ua-platform-version' | 'ch-ua-wow64' | 'ch-viewport-height' | 'ch-viewport-width' | 'ch-width' | 'clipboard-read' | 'clipboard-write' | 'compute-pressure' | 'controlled-frame' | 'cross-origin-isolated' | 'deferred-fetch' | 'deferred-fetch-minimal' | 'device-attributes' | 'digital-credentials-create' | 'digital-credentials-get' | 'direct-sockets' | 'direct-sockets-multicast' | 'display-capture' | 'document-domain' | 'encrypted-media' | 'execution-while-out-of-viewport' | 'execution-while-not-rendered' | 'focus-without-user-activation' | 'fullscreen' | 'frobulate' | 'gamepad' | 'geolocation' | 'gyroscope' | 'hid' | 'identity-credentials-get' | 'idle-detection' | 'interest-cohort' | 'join-ad-interest-group' | 'keyboard-map' | 'language-detector' | 'language-model' | 'local-fonts' | 'local-network' | 'local-network-access' | 'loopback-network' | 'magnetometer' | 'manual-text' | 'media-playback-while-not-visible' | 'microphone' | 'midi' | 'on-device-speech-recognition' | 'otp-credentials' | 'payment' | 'picture-in-picture' | 'private-aggregation' | 'private-state-token-issuance' | 'private-state-token-redemption' | 'publickey-credentials-create' | 'publickey-credentials-get' | 'record-ad-auction-events' | 'rewriter' | 'run-ad-auction' | 'screen-wake-lock' | 'serial' | 'shared-storage' | 'shared-storage-select-url' | 'smart-card' | 'speaker-selection' | 'storage-access' | 'sub-apps' | 'summarizer' | 'sync-xhr' | 'tools' | 'translator' | 'unload' | 'usb' | 'usb-unrestricted' | 'vertical-scroll' | 'web-app-installation' | 'webnn' | 'web-printing' | 'web-share' | 'window-management' | 'writer' | 'xr-spatial-tracking');
+        export type PermissionsPolicyFeature = ('accelerometer' | 'all-screens-capture' | 'ambient-light-sensor' | 'aria-notify' | 'autofill' | 'autoplay' | 'bluetooth' | 'browsing-topics' | 'camera' | 'captured-surface-control' | 'ch-dpr' | 'ch-device-memory' | 'ch-downlink' | 'ch-ect' | 'ch-prefers-color-scheme' | 'ch-prefers-reduced-motion' | 'ch-prefers-reduced-transparency' | 'ch-rtt' | 'ch-save-data' | 'ch-ua' | 'ch-ua-arch' | 'ch-ua-bitness' | 'ch-ua-high-entropy-values' | 'ch-ua-platform' | 'ch-ua-model' | 'ch-ua-mobile' | 'ch-ua-form-factors' | 'ch-ua-full-version' | 'ch-ua-full-version-list' | 'ch-ua-platform-version' | 'ch-ua-wow64' | 'ch-viewport-height' | 'ch-viewport-width' | 'ch-width' | 'clipboard-read' | 'clipboard-write' | 'compute-pressure' | 'controlled-frame' | 'cross-origin-isolated' | 'deferred-fetch' | 'deferred-fetch-minimal' | 'device-attributes' | 'digital-credentials-create' | 'digital-credentials-get' | 'direct-sockets' | 'direct-sockets-multicast' | 'display-capture' | 'document-domain' | 'encrypted-media' | 'execution-while-out-of-viewport' | 'execution-while-not-rendered' | 'focus-without-user-activation' | 'fullscreen' | 'frobulate' | 'gamepad' | 'geolocation' | 'gyroscope' | 'haptics' | 'hid' | 'identity-credentials-get' | 'idle-detection' | 'interest-cohort' | 'keyboard-map' | 'language-detector' | 'language-model' | 'local-fonts' | 'local-network' | 'local-network-access' | 'loopback-network' | 'magnetometer' | 'manual-text' | 'media-playback-while-not-visible' | 'microphone' | 'midi' | 'on-device-speech-recognition' | 'otp-credentials' | 'payment' | 'picture-in-picture' | 'private-state-token-issuance' | 'private-state-token-redemption' | 'publickey-credentials-create' | 'publickey-credentials-get' | 'rewriter' | 'screen-wake-lock' | 'serial' | 'shared-storage' | 'shared-storage-select-url' | 'smart-card' | 'speaker-selection' | 'storage-access' | 'sub-apps' | 'summarizer' | 'sync-xhr' | 'tools' | 'translator' | 'unload' | 'usb' | 'usb-unrestricted' | 'vertical-scroll' | 'web-app-installation' | 'webnn' | 'web-printing' | 'web-share' | 'window-management' | 'writer' | 'xr-spatial-tracking');
 
         /**
          * Reason for a permissions policy feature to be disabled.
@@ -17355,7 +17258,6 @@ export namespace Protocol {
         export interface FileHandler {
             action: string;
             name: string;
-            icons?: ImageResource[];
             /**
              * Mimic a map, name is the key, accepts is the value.
              */
@@ -17512,7 +17414,7 @@ export namespace Protocol {
          * List of not restored reasons for back-forward cache.
          * @experimental
          */
-        export type BackForwardCacheNotRestoredReason = ('NotPrimaryMainFrame' | 'BackForwardCacheDisabled' | 'RelatedActiveContentsExist' | 'HTTPStatusNotOK' | 'SchemeNotHTTPOrHTTPS' | 'Loading' | 'WasGrantedMediaAccess' | 'DisableForRenderFrameHostCalled' | 'DomainNotAllowed' | 'HTTPMethodNotGET' | 'SubframeIsNavigating' | 'Timeout' | 'CacheLimit' | 'JavaScriptExecution' | 'RendererProcessKilled' | 'RendererProcessCrashed' | 'SchedulerTrackedFeatureUsed' | 'ConflictingBrowsingInstance' | 'CacheFlushed' | 'ServiceWorkerVersionActivation' | 'SessionRestored' | 'ServiceWorkerPostMessage' | 'EnteredBackForwardCacheBeforeServiceWorkerHostAdded' | 'RenderFrameHostReused_SameSite' | 'RenderFrameHostReused_CrossSite' | 'ServiceWorkerClaim' | 'IgnoreEventAndEvict' | 'HaveInnerContents' | 'TimeoutPuttingInCache' | 'BackForwardCacheDisabledByLowMemory' | 'BackForwardCacheDisabledByCommandLine' | 'NetworkRequestDatapipeDrainedAsBytesConsumer' | 'NetworkRequestRedirected' | 'NetworkRequestTimeout' | 'NetworkExceedsBufferLimit' | 'NavigationCancelledWhileRestoring' | 'NotMostRecentNavigationEntry' | 'BackForwardCacheDisabledForPrerender' | 'UserAgentOverrideDiffers' | 'ForegroundCacheLimit' | 'ForwardCacheDisabled' | 'BrowsingInstanceNotSwapped' | 'BackForwardCacheDisabledForDelegate' | 'UnloadHandlerExistsInMainFrame' | 'UnloadHandlerExistsInSubFrame' | 'ServiceWorkerUnregistration' | 'CacheControlNoStore' | 'CacheControlNoStoreCookieModified' | 'CacheControlNoStoreHTTPOnlyCookieModified' | 'NoResponseHead' | 'Unknown' | 'ActivationNavigationsDisallowedForBug1234857' | 'ErrorDocument' | 'FencedFramesEmbedder' | 'CookieDisabled' | 'HTTPAuthRequired' | 'CookieFlushed' | 'BroadcastChannelOnMessage' | 'WebViewSettingsChanged' | 'WebViewJavaScriptObjectChanged' | 'WebViewMessageListenerInjected' | 'WebViewSafeBrowsingAllowlistChanged' | 'WebViewDocumentStartJavascriptChanged' | 'WebSocket' | 'WebTransport' | 'WebRTC' | 'MainResourceHasCacheControlNoStore' | 'MainResourceHasCacheControlNoCache' | 'SubresourceHasCacheControlNoStore' | 'SubresourceHasCacheControlNoCache' | 'ContainsPlugins' | 'DocumentLoaded' | 'OutstandingNetworkRequestOthers' | 'RequestedMIDIPermission' | 'RequestedAudioCapturePermission' | 'RequestedVideoCapturePermission' | 'RequestedBackForwardCacheBlockedSensors' | 'RequestedBackgroundWorkPermission' | 'BroadcastChannel' | 'WebXR' | 'SharedWorker' | 'SharedWorkerMessage' | 'SharedWorkerWithNoActiveClient' | 'WebLocks' | 'WebLocksContention' | 'WebHID' | 'WebBluetooth' | 'WebShare' | 'RequestedStorageAccessGrant' | 'WebNfc' | 'OutstandingNetworkRequestFetch' | 'OutstandingNetworkRequestXHR' | 'AppBanner' | 'Printing' | 'WebDatabase' | 'PictureInPicture' | 'SpeechRecognizer' | 'IdleManager' | 'PaymentManager' | 'SpeechSynthesis' | 'KeyboardLock' | 'WebOTPService' | 'OutstandingNetworkRequestDirectSocket' | 'InjectedJavascript' | 'InjectedStyleSheet' | 'KeepaliveRequest' | 'IndexedDBEvent' | 'Dummy' | 'JsNetworkRequestReceivedCacheControlNoStoreResource' | 'WebRTCUsedWithCCNS' | 'WebTransportUsedWithCCNS' | 'WebSocketUsedWithCCNS' | 'SmartCard' | 'LiveMediaStreamTrack' | 'UnloadHandler' | 'ParserAborted' | 'ContentSecurityHandler' | 'ContentWebAuthenticationAPI' | 'ContentFileChooser' | 'ContentSerial' | 'ContentFileSystemAccess' | 'ContentMediaDevicesDispatcherHost' | 'ContentWebBluetooth' | 'ContentWebUSB' | 'ContentMediaSessionService' | 'ContentScreenReader' | 'ContentDiscarded' | 'EmbedderPopupBlockerTabHelper' | 'EmbedderSafeBrowsingTriggeredPopupBlocker' | 'EmbedderSafeBrowsingThreatDetails' | 'EmbedderAppBannerManager' | 'EmbedderDomDistillerViewerSource' | 'EmbedderDomDistillerSelfDeletingRequestDelegate' | 'EmbedderOomInterventionTabHelper' | 'EmbedderOfflinePage' | 'EmbedderChromePasswordManagerClientBindCredentialManager' | 'EmbedderPermissionRequestManager' | 'EmbedderModalDialog' | 'EmbedderExtensions' | 'EmbedderExtensionMessaging' | 'EmbedderExtensionMessagingForOpenPort' | 'EmbedderExtensionSentMessageToCachedFrame' | 'EmbedderExtensionFrame' | 'RequestedByWebViewClient' | 'PostMessageByWebViewClient' | 'CacheControlNoStoreDeviceBoundSessionTerminated' | 'CacheLimitPrunedOnModerateMemoryPressure' | 'CacheLimitPrunedOnCriticalMemoryPressure');
+        export type BackForwardCacheNotRestoredReason = ('NotPrimaryMainFrame' | 'BackForwardCacheDisabled' | 'RelatedActiveContentsExist' | 'HTTPStatusNotOK' | 'SchemeNotHTTPOrHTTPS' | 'Loading' | 'WasGrantedMediaAccess' | 'DisableForRenderFrameHostCalled' | 'DomainNotAllowed' | 'HTTPMethodNotGET' | 'SubframeIsNavigating' | 'Timeout' | 'CacheLimit' | 'JavaScriptExecution' | 'RendererProcessKilled' | 'RendererProcessCrashed' | 'SchedulerTrackedFeatureUsed' | 'ConflictingBrowsingInstance' | 'CacheFlushed' | 'ServiceWorkerVersionActivation' | 'SessionRestored' | 'ServiceWorkerPostMessage' | 'EnteredBackForwardCacheBeforeServiceWorkerHostAdded' | 'RenderFrameHostReused_SameSite' | 'RenderFrameHostReused_CrossSite' | 'ServiceWorkerClaim' | 'IgnoreEventAndEvict' | 'HaveInnerContents' | 'TimeoutPuttingInCache' | 'BackForwardCacheDisabledByLowMemory' | 'BackForwardCacheDisabledByCommandLine' | 'NetworkRequestDatapipeDrainedAsBytesConsumer' | 'NetworkRequestRedirected' | 'NetworkRequestTimeout' | 'NetworkExceedsBufferLimit' | 'NavigationCancelledWhileRestoring' | 'NotMostRecentNavigationEntry' | 'BackForwardCacheDisabledForPrerender' | 'UserAgentOverrideDiffers' | 'ForegroundCacheLimit' | 'ForwardCacheDisabled' | 'BrowsingInstanceNotSwapped' | 'BackForwardCacheDisabledForDelegate' | 'UnloadHandlerExistsInMainFrame' | 'UnloadHandlerExistsInSubFrame' | 'ServiceWorkerUnregistration' | 'CacheControlNoStore' | 'CacheControlNoStoreCookieModified' | 'CacheControlNoStoreHTTPOnlyCookieModified' | 'NoResponseHead' | 'Unknown' | 'ActivationNavigationsDisallowedForBug1234857' | 'ErrorDocument' | 'FencedFramesEmbedder' | 'CookieDisabled' | 'HTTPAuthRequired' | 'CookieFlushed' | 'BroadcastChannelOnMessage' | 'WebViewSettingsChanged' | 'WebViewJavaScriptObjectChanged' | 'WebViewMessageListenerInjected' | 'WebViewSafeBrowsingAllowlistChanged' | 'WebViewDocumentStartJavascriptChanged' | 'WebSocket' | 'WebTransport' | 'WebRTC' | 'MainResourceHasCacheControlNoStore' | 'MainResourceHasCacheControlNoCache' | 'SubresourceHasCacheControlNoStore' | 'SubresourceHasCacheControlNoCache' | 'ContainsPlugins' | 'DocumentLoaded' | 'OutstandingNetworkRequestOthers' | 'RequestedMIDIPermission' | 'RequestedAudioCapturePermission' | 'RequestedVideoCapturePermission' | 'RequestedBackForwardCacheBlockedSensors' | 'RequestedBackgroundWorkPermission' | 'BroadcastChannel' | 'WebXR' | 'SharedWorker' | 'SharedWorkerMessage' | 'SharedWorkerWithNoActiveClient' | 'WebLocks' | 'WebLocksContention' | 'WebHID' | 'WebBluetooth' | 'WebShare' | 'RequestedStorageAccessGrant' | 'WebNfc' | 'OutstandingNetworkRequestFetch' | 'OutstandingNetworkRequestXHR' | 'AppBanner' | 'Printing' | 'WebDatabase' | 'PictureInPicture' | 'SpeechRecognizer' | 'IdleManager' | 'PaymentManager' | 'SpeechSynthesis' | 'KeyboardLock' | 'WebOTPService' | 'OutstandingNetworkRequestDirectSocket' | 'InjectedJavascript' | 'InjectedStyleSheet' | 'KeepaliveRequest' | 'IndexedDBEvent' | 'Dummy' | 'JsNetworkRequestReceivedCacheControlNoStoreResource' | 'WebRTCUsedWithCCNS' | 'WebTransportUsedWithCCNS' | 'WebSocketUsedWithCCNS' | 'SmartCard' | 'LiveMediaStreamTrack' | 'UnloadHandler' | 'ParserAborted' | 'ContentSecurityHandler' | 'ContentWebAuthenticationAPI' | 'ContentFileChooser' | 'ContentSerial' | 'ContentFileSystemAccess' | 'ContentMediaDevicesDispatcherHost' | 'ContentWebBluetooth' | 'ContentWebUSB' | 'ContentMediaSessionService' | 'ContentScreenReader' | 'ContentDiscarded' | 'EmbedderPopupBlockerTabHelper' | 'EmbedderSafeBrowsingTriggeredPopupBlocker' | 'EmbedderSafeBrowsingThreatDetails' | 'EmbedderAppBannerManager' | 'EmbedderDomDistillerViewerSource' | 'EmbedderDomDistillerSelfDeletingRequestDelegate' | 'EmbedderOomInterventionTabHelper' | 'EmbedderOfflinePage' | 'EmbedderChromePasswordManagerClientBindCredentialManager' | 'EmbedderPermissionRequestManager' | 'EmbedderModalDialog' | 'EmbedderExtensions' | 'EmbedderExtensionMessaging' | 'EmbedderExtensionMessagingForOpenPort' | 'EmbedderExtensionSentMessageToCachedFrame' | 'EmbedderExtensionFrame' | 'EmbedderPrivilegedWebContents' | 'RequestedByWebViewClient' | 'PostMessageByWebViewClient' | 'CacheControlNoStoreDeviceBoundSessionTerminated' | 'CacheLimitPrunedOnModerateMemoryPressure' | 'CacheLimitPrunedOnCriticalMemoryPressure');
 
         /**
          * Types of not restored reasons for back-forward cache.
@@ -18001,7 +17903,7 @@ export namespace Protocol {
              * - `url`: document location
              * - `pageNumber`: current page number
              * - `totalPages`: total pages in the document
-             *
+             * 
              * For example, `<span class=title></span>` would generate span containing the title.
              */
             headerTemplate?: string;
@@ -18312,9 +18214,53 @@ export namespace Protocol {
              */
             maxHeight?: integer;
             /**
-             * Send every n-th frame.
+             * Send every n-th frame. Must be a positive integer.
              */
             everyNthFrame?: integer;
+            /**
+             * Maximum number of frames sent until screencastFrameAck is required.
+             * Defaults to 3. Must be a positive integer.
+             */
+            maxFramesInFlight?: integer;
+            /**
+             * By default, after screencastFrameAck arrives, the next produced frame is sent.
+             * Passing this flag enables storing the last produced frame in memory, which is
+             * immediately sent upon screencastFrameAck. This way, overall performance is
+             * traded for a better latency.
+             */
+            sendLastFrame?: boolean;
+        }
+
+        export interface StartScreenRecordingRequest {
+            audio?: boolean;
+            /**
+             * Maximum frame width in pixels.
+             */
+            maxWidth?: integer;
+            /**
+             * Maximum frame height in pixels.
+             */
+            maxHeight?: integer;
+            /**
+             * Maximum frame rate in frames per second.
+             */
+            frameRate?: integer;
+        }
+
+        export interface StartScreenRecordingResponse {
+            /**
+             * A handle of the stream that holds resulting screencast data.
+             * @experimental
+             */
+            stream: IO.StreamHandle;
+        }
+
+        export interface StopScreenRecordingResponse {
+            /**
+             * A handle of the stream that holds resulting screencast data.
+             * @experimental
+             */
+            stream: IO.StreamHandle;
         }
 
         export const enum SetWebLifecycleStateRequestState {
@@ -19054,7 +19000,7 @@ export namespace Protocol {
              * Source text of JSON representing the rule set. If it comes from
              * `<script>` tag, it is the textContent of the node. Note that it is
              * a JSON for valid case.
-             *
+             * 
              * See also:
              * - https://wicg.github.io/nav-speculation/speculation-rules.html
              * - https://github.com/WICG/nav-speculation/blob/main/triggers.md
@@ -19067,7 +19013,7 @@ export namespace Protocol {
              * the BackendNodeId of the relevant `<script>` tag. For the second
              * case, we include the external URL where the rule set was loaded
              * from, and also RequestId if Network domain is enabled.
-             *
+             * 
              * See also:
              * - https://wicg.github.io/nav-speculation/speculation-rules.html#speculation-rules-script
              * - https://wicg.github.io/nav-speculation/speculation-rules.html#speculation-rules-header
@@ -19109,7 +19055,7 @@ export namespace Protocol {
 
         /**
          * A key that identifies a preloading attempt.
-         *
+         * 
          * The url used is the url specified by the trigger (i.e. the initial URL), and
          * not the final url that is navigated to. For example, prerendering allows
          * same-origin main frame navigations during the attempt, but the attempt is
@@ -19141,7 +19087,7 @@ export namespace Protocol {
          * concept of preloading pipeline. For example, if a site uses a
          * SpeculationRules for prerender, Chrome first starts a prefetch and
          * then upgrades it to prerender.
-         *
+         * 
          * CDP events for them are emitted separately but they share
          * `PreloadPipelineId`.
          */
@@ -19162,7 +19108,7 @@ export namespace Protocol {
          * TODO(https://crbug.com/1384419): revisit the list of PrefetchStatus and
          * filter out the ones that aren't necessary to the developers.
          */
-        export type PrefetchStatus = ('PrefetchAllowed' | 'PrefetchFailedIneligibleRedirect' | 'PrefetchFailedInvalidRedirect' | 'PrefetchFailedMIMENotSupported' | 'PrefetchFailedNetError' | 'PrefetchFailedNon2XX' | 'PrefetchEvictedAfterBrowsingDataRemoved' | 'PrefetchEvictedAfterCandidateRemoved' | 'PrefetchEvictedForNewerPrefetch' | 'PrefetchHeldback' | 'PrefetchIneligibleRetryAfter' | 'PrefetchIsPrivacyDecoy' | 'PrefetchIsStale' | 'PrefetchNotEligibleBlockedByConnectionAllowlist' | 'PrefetchNotEligibleBrowserContextOffTheRecord' | 'PrefetchNotEligibleDataSaverEnabled' | 'PrefetchNotEligibleExistingProxy' | 'PrefetchNotEligibleHostIsNonUnique' | 'PrefetchNotEligibleNonDefaultStoragePartition' | 'PrefetchNotEligibleSameSiteCrossOriginPrefetchRequiredProxy' | 'PrefetchNotEligibleSchemeIsNotHttps' | 'PrefetchNotEligibleUserHasCookies' | 'PrefetchNotEligibleUserHasServiceWorker' | 'PrefetchNotEligibleUserHasServiceWorkerNoFetchHandler' | 'PrefetchNotEligibleRedirectFromServiceWorker' | 'PrefetchNotEligibleRedirectToServiceWorker' | 'PrefetchNotEligibleBatterySaverEnabled' | 'PrefetchNotEligiblePreloadingDisabled' | 'PrefetchNotFinishedInTime' | 'PrefetchNotStarted' | 'PrefetchNotUsedCookiesChanged' | 'PrefetchProxyNotAvailable' | 'PrefetchResponseUsed' | 'PrefetchSuccessfulButNotUsed' | 'PrefetchNotUsedProbeFailed' | 'PrefetchCancelledOnUserNavigation');
+        export type PrefetchStatus = ('PrefetchAllowed' | 'PrefetchFailedIneligibleRedirect' | 'PrefetchFailedInvalidRedirect' | 'PrefetchFailedMIMENotSupported' | 'PrefetchFailedNetError' | 'PrefetchFailedNon2XX' | 'PrefetchEvictedAfterBrowsingDataRemoved' | 'PrefetchEvictedAfterCandidateRemoved' | 'PrefetchEvictedForNewerPrefetch' | 'PrefetchHeldback' | 'PrefetchIneligibleRetryAfter' | 'PrefetchIsPrivacyDecoy' | 'PrefetchIsStale' | 'PrefetchNotEligibleBlockedByConnectionAllowlist' | 'PrefetchNotEligibleBrowserContextOffTheRecord' | 'PrefetchNotEligibleCrossOrigin' | 'PrefetchNotEligibleDataSaverEnabled' | 'PrefetchNotEligibleExistingProxy' | 'PrefetchNotEligibleHostIsNonUnique' | 'PrefetchNotEligibleNonDefaultStoragePartition' | 'PrefetchNotEligibleSameSiteCrossOriginPrefetchRequiredProxy' | 'PrefetchNotEligibleSchemeIsNotHttps' | 'PrefetchNotEligibleUserHasCookies' | 'PrefetchNotEligibleUserHasServiceWorker' | 'PrefetchNotEligibleUserHasServiceWorkerNoFetchHandler' | 'PrefetchNotEligibleRedirectFromServiceWorker' | 'PrefetchNotEligibleRedirectToServiceWorker' | 'PrefetchNotEligibleBatterySaverEnabled' | 'PrefetchNotEligiblePreloadingDisabled' | 'PrefetchNotFinishedInTime' | 'PrefetchNotStarted' | 'PrefetchNotUsedCookiesChanged' | 'PrefetchProxyNotAvailable' | 'PrefetchResponseUsed' | 'PrefetchSuccessfulButNotUsed' | 'PrefetchNotUsedProbeFailed' | 'PrefetchCancelledOnUserNavigation');
 
         /**
          * Information of headers to be displayed when the header mismatch occurred.
@@ -19562,6 +19508,55 @@ export namespace Protocol {
         export type ServiceWorkerVersionStatus = ('new' | 'installing' | 'installed' | 'activating' | 'activated' | 'redundant');
 
         /**
+         * Mostly corresponds to `RouterCondition` in ServiceWorker spec
+         * (https://www.w3.org/TR/service-workers/#dictdef-routercondition) while this
+         * currently lacks support for the nested conditions ("or" and "not").
+         * TODO(crbug.com/540469610): Support recursive conditions.
+         */
+        export interface ServiceWorkerRouterCondition {
+            /**
+             * Plain text, or JSON serialization of URLPatternInit or URLPattern
+             */
+            urlPattern?: string;
+            requestMethod?: string;
+            requestMode?: string;
+            requestDestination?: string;
+            runningStatus?: ServiceWorkerVersionRunningStatus;
+        }
+
+        export type ServiceWorkerRouterSourceType = ('cache' | 'fetchEvent' | 'network' | 'raceNetworkAndFetchHandler' | 'raceNetworkAndCache' | 'sourceDict');
+
+        /**
+         * https://www.w3.org/TR/service-workers/#dictdef-routersourcedict
+         */
+        export interface ServiceWorkerRouterSourceDict {
+            cacheName: string;
+        }
+
+        /**
+         * Corresponds to `RouterSource` in the spec while the representation is different as follows.
+         * (https://www.w3.org/TR/service-workers/#typedefdef-routersource)
+         * - `RouterSourceEnum`: `type` equals `cache`, `sourceDict` is null.
+         * - `RouterSourceDict`: `type` equals `sourceDict`, `sourceDict` has valid value.
+         */
+        export interface ServiceWorkerRouterSource {
+            type: ServiceWorkerRouterSourceType;
+            /**
+             * Non-empty iff `type` equals "sourceDict".
+             */
+            sourceDict?: ServiceWorkerRouterSourceDict;
+        }
+
+        export interface ServiceWorkerRouterRule {
+            condition: ServiceWorkerRouterCondition;
+            source: ServiceWorkerRouterSource;
+            /**
+             * Rule ID assigned by the browser. Unique within each ServiceWorkerVersion.
+             */
+            id: integer;
+        }
+
+        /**
          * ServiceWorker version.
          */
         export interface ServiceWorkerVersion {
@@ -19581,7 +19576,13 @@ export namespace Protocol {
             scriptResponseTime?: number;
             controlledClients?: Target.TargetID[];
             targetId?: Target.TargetID;
+            /**
+             * Migration to `typedRouterRules` is in progress. The browser sends either
+             * `routerRules` or `typedRouterRules`.
+             * TODO(crbug.com/540469610): Remove `routerRules` after the migration.
+             */
             routerRules?: string;
+            typedRouterRules?: ServiceWorkerRouterRule[];
         }
 
         /**
@@ -19659,7 +19660,7 @@ export namespace Protocol {
 
         /**
          * Indicates the PC/SC error code.
-         *
+         * 
          * This maps to:
          * PC/SC Lite: https://pcsclite.apdu.fr/api/group__ErrorCodes.html
          * Microsoft: https://learn.microsoft.com/en-us/windows/win32/secauthn/authentication-return-values
@@ -19779,7 +19780,7 @@ export namespace Protocol {
 
         /**
          * Fired when |SCardEstablishContext| is called.
-         *
+         * 
          * This maps to:
          * PC/SC Lite: https://pcsclite.apdu.fr/api/group__API.html#gaa1b8970169fd4883a6dc4a8f43f19b67
          * Microsoft: https://learn.microsoft.com/en-us/windows/win32/api/winscard/nf-winscard-scardestablishcontext
@@ -19790,7 +19791,7 @@ export namespace Protocol {
 
         /**
          * Fired when |SCardReleaseContext| is called.
-         *
+         * 
          * This maps to:
          * PC/SC Lite: https://pcsclite.apdu.fr/api/group__API.html#ga6aabcba7744c5c9419fdd6404f73a934
          * Microsoft: https://learn.microsoft.com/en-us/windows/win32/api/winscard/nf-winscard-scardreleasecontext
@@ -19802,7 +19803,7 @@ export namespace Protocol {
 
         /**
          * Fired when |SCardListReaders| is called.
-         *
+         * 
          * This maps to:
          * PC/SC Lite: https://pcsclite.apdu.fr/api/group__API.html#ga93b07815789b3cf2629d439ecf20f0d9
          * Microsoft: https://learn.microsoft.com/en-us/windows/win32/api/winscard/nf-winscard-scardlistreadersa
@@ -19814,7 +19815,7 @@ export namespace Protocol {
 
         /**
          * Fired when |SCardGetStatusChange| is called. Timeout is specified in milliseconds.
-         *
+         * 
          * This maps to:
          * PC/SC Lite: https://pcsclite.apdu.fr/api/group__API.html#ga33247d5d1257d59e55647c3bb717db24
          * Microsoft: https://learn.microsoft.com/en-us/windows/win32/api/winscard/nf-winscard-scardgetstatuschangea
@@ -19831,7 +19832,7 @@ export namespace Protocol {
 
         /**
          * Fired when |SCardCancel| is called.
-         *
+         * 
          * This maps to:
          * PC/SC Lite: https://pcsclite.apdu.fr/api/group__API.html#gaacbbc0c6d6c0cbbeb4f4debf6fbeeee6
          * Microsoft: https://learn.microsoft.com/en-us/windows/win32/api/winscard/nf-winscard-scardcancel
@@ -19843,7 +19844,7 @@ export namespace Protocol {
 
         /**
          * Fired when |SCardConnect| is called.
-         *
+         * 
          * This maps to:
          * PC/SC Lite: https://pcsclite.apdu.fr/api/group__API.html#ga4e515829752e0a8dbc4d630696a8d6a5
          * Microsoft: https://learn.microsoft.com/en-us/windows/win32/api/winscard/nf-winscard-scardconnecta
@@ -19858,7 +19859,7 @@ export namespace Protocol {
 
         /**
          * Fired when |SCardDisconnect| is called.
-         *
+         * 
          * This maps to:
          * PC/SC Lite: https://pcsclite.apdu.fr/api/group__API.html#ga4be198045c73ec0deb79e66c0ca1738a
          * Microsoft: https://learn.microsoft.com/en-us/windows/win32/api/winscard/nf-winscard-scarddisconnect
@@ -19871,7 +19872,7 @@ export namespace Protocol {
 
         /**
          * Fired when |SCardTransmit| is called.
-         *
+         * 
          * This maps to:
          * PC/SC Lite: https://pcsclite.apdu.fr/api/group__API.html#ga9a2d77242a271310269065e64633ab99
          * Microsoft: https://learn.microsoft.com/en-us/windows/win32/api/winscard/nf-winscard-scardtransmit
@@ -19885,7 +19886,7 @@ export namespace Protocol {
 
         /**
          * Fired when |SCardControl| is called.
-         *
+         * 
          * This maps to:
          * PC/SC Lite: https://pcsclite.apdu.fr/api/group__API.html#gac3454d4657110fd7f753b2d3d8f4e32f
          * Microsoft: https://learn.microsoft.com/en-us/windows/win32/api/winscard/nf-winscard-scardcontrol
@@ -19899,7 +19900,7 @@ export namespace Protocol {
 
         /**
          * Fired when |SCardGetAttrib| is called.
-         *
+         * 
          * This maps to:
          * PC/SC Lite: https://pcsclite.apdu.fr/api/group__API.html#gaacfec51917255b7a25b94c5104961602
          * Microsoft: https://learn.microsoft.com/en-us/windows/win32/api/winscard/nf-winscard-scardgetattrib
@@ -19912,7 +19913,7 @@ export namespace Protocol {
 
         /**
          * Fired when |SCardSetAttrib| is called.
-         *
+         * 
          * This maps to:
          * PC/SC Lite: https://pcsclite.apdu.fr/api/group__API.html#ga060f0038a4ddfd5dd2b8fadf3c3a2e4f
          * Microsoft: https://learn.microsoft.com/en-us/windows/win32/api/winscard/nf-winscard-scardsetattrib
@@ -19926,7 +19927,7 @@ export namespace Protocol {
 
         /**
          * Fired when |SCardStatus| is called.
-         *
+         * 
          * This maps to:
          * PC/SC Lite: https://pcsclite.apdu.fr/api/group__API.html#gae49c3c894ad7ac12a5b896bde70d0382
          * Microsoft: https://learn.microsoft.com/en-us/windows/win32/api/winscard/nf-winscard-scardstatusa
@@ -19938,7 +19939,7 @@ export namespace Protocol {
 
         /**
          * Fired when |SCardBeginTransaction| is called.
-         *
+         * 
          * This maps to:
          * PC/SC Lite: https://pcsclite.apdu.fr/api/group__API.html#gaddb835dce01a0da1d6ca02d33ee7d861
          * Microsoft: https://learn.microsoft.com/en-us/windows/win32/api/winscard/nf-winscard-scardbegintransaction
@@ -19950,7 +19951,7 @@ export namespace Protocol {
 
         /**
          * Fired when |SCardEndTransaction| is called.
-         *
+         * 
          * This maps to:
          * PC/SC Lite: https://pcsclite.apdu.fr/api/group__API.html#gae8742473b404363e5c587f570d7e2f3b
          * Microsoft: https://learn.microsoft.com/en-us/windows/win32/api/winscard/nf-winscard-scardendtransaction
@@ -19972,7 +19973,7 @@ export namespace Protocol {
         /**
          * Enum of possible storage types.
          */
-        export type StorageType = ('cookies' | 'file_systems' | 'indexeddb' | 'local_storage' | 'shader_cache' | 'websql' | 'service_workers' | 'cache_storage' | 'interest_groups' | 'shared_storage' | 'storage_buckets' | 'all' | 'other');
+        export type StorageType = ('cookies' | 'file_systems' | 'indexeddb' | 'local_storage' | 'shader_cache' | 'websql' | 'service_workers' | 'cache_storage' | 'storage_buckets' | 'all' | 'other');
 
         /**
          * Usage for a storage type.
@@ -19996,197 +19997,6 @@ export namespace Protocol {
         export interface TrustTokens {
             issuerOrigin: string;
             count: number;
-        }
-
-        /**
-         * Enum of shared storage access scopes.
-         */
-        export type SharedStorageAccessScope = ('window' | 'sharedStorageWorklet' | 'header');
-
-        /**
-         * Enum of shared storage access methods.
-         */
-        export type SharedStorageAccessMethod = ('addModule' | 'createWorklet' | 'selectURL' | 'run' | 'batchUpdate' | 'set' | 'append' | 'delete' | 'clear' | 'get' | 'keys' | 'values' | 'entries' | 'length' | 'remainingBudget');
-
-        /**
-         * Struct for a single key-value pair in an origin's shared storage.
-         */
-        export interface SharedStorageEntry {
-            key: string;
-            value: string;
-        }
-
-        /**
-         * Details for an origin's shared storage.
-         */
-        export interface SharedStorageMetadata {
-            /**
-             * Time when the origin's shared storage was last created.
-             */
-            creationTime: Network.TimeSinceEpoch;
-            /**
-             * Number of key-value pairs stored in origin's shared storage.
-             */
-            length: integer;
-            /**
-             * Current amount of bits of entropy remaining in the navigation budget.
-             */
-            remainingBudget: number;
-            /**
-             * Total number of bytes stored as key-value pairs in origin's shared
-             * storage.
-             */
-            bytesUsed: integer;
-        }
-
-        /**
-         * Represents a dictionary object passed in as privateAggregationConfig to
-         * run or selectURL.
-         */
-        export interface SharedStoragePrivateAggregationConfig {
-            /**
-             * The chosen aggregation service deployment.
-             */
-            aggregationCoordinatorOrigin?: string;
-            /**
-             * The context ID provided.
-             */
-            contextId?: string;
-            /**
-             * Configures the maximum size allowed for filtering IDs.
-             */
-            filteringIdMaxBytes: integer;
-            /**
-             * The limit on the number of contributions in the final report.
-             */
-            maxContributions?: integer;
-        }
-
-        /**
-         * Pair of reporting metadata details for a candidate URL for `selectURL()`.
-         */
-        export interface SharedStorageReportingMetadata {
-            eventType: string;
-            reportingUrl: string;
-        }
-
-        /**
-         * Bundles a candidate URL with its reporting metadata.
-         */
-        export interface SharedStorageUrlWithMetadata {
-            /**
-             * Spec of candidate URL.
-             */
-            url: string;
-            /**
-             * Any associated reporting metadata.
-             */
-            reportingMetadata: SharedStorageReportingMetadata[];
-        }
-
-        /**
-         * Bundles the parameters for shared storage access events whose
-         * presence/absence can vary according to SharedStorageAccessType.
-         */
-        export interface SharedStorageAccessParams {
-            /**
-             * Spec of the module script URL.
-             * Present only for SharedStorageAccessMethods: addModule and
-             * createWorklet.
-             */
-            scriptSourceUrl?: string;
-            /**
-             * String denoting "context-origin", "script-origin", or a custom
-             * origin to be used as the worklet's data origin.
-             * Present only for SharedStorageAccessMethod: createWorklet.
-             */
-            dataOrigin?: string;
-            /**
-             * Name of the registered operation to be run.
-             * Present only for SharedStorageAccessMethods: run and selectURL.
-             */
-            operationName?: string;
-            /**
-             * ID of the operation call.
-             * Present only for SharedStorageAccessMethods: run and selectURL.
-             */
-            operationId?: string;
-            /**
-             * Whether or not to keep the worket alive for future run or selectURL
-             * calls.
-             * Present only for SharedStorageAccessMethods: run and selectURL.
-             */
-            keepAlive?: boolean;
-            /**
-             * Configures the private aggregation options.
-             * Present only for SharedStorageAccessMethods: run and selectURL.
-             */
-            privateAggregationConfig?: SharedStoragePrivateAggregationConfig;
-            /**
-             * The operation's serialized data in bytes (converted to a string).
-             * Present only for SharedStorageAccessMethods: run and selectURL.
-             * TODO(crbug.com/401011862): Consider updating this parameter to binary.
-             */
-            serializedData?: string;
-            /**
-             * Array of candidate URLs' specs, along with any associated metadata.
-             * Present only for SharedStorageAccessMethod: selectURL.
-             */
-            urlsWithMetadata?: SharedStorageUrlWithMetadata[];
-            /**
-             * Spec of the URN:UUID generated for a selectURL call.
-             * Present only for SharedStorageAccessMethod: selectURL.
-             */
-            urnUuid?: string;
-            /**
-             * Key for a specific entry in an origin's shared storage.
-             * Present only for SharedStorageAccessMethods: set, append, delete, and
-             * get.
-             */
-            key?: string;
-            /**
-             * Value for a specific entry in an origin's shared storage.
-             * Present only for SharedStorageAccessMethods: set and append.
-             */
-            value?: string;
-            /**
-             * Whether or not to set an entry for a key if that key is already present.
-             * Present only for SharedStorageAccessMethod: set.
-             */
-            ignoreIfPresent?: boolean;
-            /**
-             * A number denoting the (0-based) order of the worklet's
-             * creation relative to all other shared storage worklets created by
-             * documents using the current storage partition.
-             * Present only for SharedStorageAccessMethods: addModule, createWorklet.
-             */
-            workletOrdinal?: integer;
-            /**
-             * Hex representation of the DevTools token used as the TargetID for the
-             * associated shared storage worklet.
-             * Present only for SharedStorageAccessMethods: addModule, createWorklet,
-             * run, selectURL, and any other SharedStorageAccessMethod when the
-             * SharedStorageAccessScope is sharedStorageWorklet.
-             */
-            workletTargetId?: Target.TargetID;
-            /**
-             * Name of the lock to be acquired, if present.
-             * Optionally present only for SharedStorageAccessMethods: batchUpdate,
-             * set, append, delete, and clear.
-             */
-            withLock?: string;
-            /**
-             * If the method has been called as part of a batchUpdate, then this
-             * number identifies the batch to which it belongs.
-             * Optionally present only for SharedStorageAccessMethods:
-             * batchUpdate (required), set, append, delete, and clear.
-             */
-            batchUpdateId?: string;
-            /**
-             * Number of modifier methods sent in batch.
-             * Present only for SharedStorageAccessMethod: batchUpdate.
-             */
-            batchSize?: integer;
         }
 
         export type StorageBucketsDurability = ('relaxed' | 'strict');
@@ -20414,50 +20224,6 @@ export namespace Protocol {
             didDeleteTokens: boolean;
         }
 
-        export interface GetSharedStorageMetadataRequest {
-            ownerOrigin: string;
-        }
-
-        export interface GetSharedStorageMetadataResponse {
-            metadata: SharedStorageMetadata;
-        }
-
-        export interface GetSharedStorageEntriesRequest {
-            ownerOrigin: string;
-        }
-
-        export interface GetSharedStorageEntriesResponse {
-            entries: SharedStorageEntry[];
-        }
-
-        export interface SetSharedStorageEntryRequest {
-            ownerOrigin: string;
-            key: string;
-            value: string;
-            /**
-             * If `ignoreIfPresent` is included and true, then only sets the entry if
-             * `key` doesn't already exist.
-             */
-            ignoreIfPresent?: boolean;
-        }
-
-        export interface DeleteSharedStorageEntryRequest {
-            ownerOrigin: string;
-            key: string;
-        }
-
-        export interface ClearSharedStorageEntriesRequest {
-            ownerOrigin: string;
-        }
-
-        export interface ResetSharedStorageBudgetRequest {
-            ownerOrigin: string;
-        }
-
-        export interface SetSharedStorageTrackingRequest {
-            enable: boolean;
-        }
-
         export interface SetStorageBucketTrackingRequest {
             storageKey: string;
             enable: boolean;
@@ -20557,79 +20323,6 @@ export namespace Protocol {
              * Storage bucket to update.
              */
             bucketId: string;
-        }
-
-        /**
-         * Shared storage was accessed by the associated page.
-         * The following parameters are included in all events.
-         */
-        export interface SharedStorageAccessedEvent {
-            /**
-             * Time of the access.
-             */
-            accessTime: Network.TimeSinceEpoch;
-            /**
-             * Enum value indicating the access scope.
-             */
-            scope: SharedStorageAccessScope;
-            /**
-             * Enum value indicating the Shared Storage API method invoked.
-             */
-            method: SharedStorageAccessMethod;
-            /**
-             * DevTools Frame Token for the primary frame tree's root.
-             */
-            mainFrameId: Page.FrameId;
-            /**
-             * Serialization of the origin owning the Shared Storage data.
-             */
-            ownerOrigin: string;
-            /**
-             * Serialization of the site owning the Shared Storage data.
-             */
-            ownerSite: string;
-            /**
-             * The sub-parameters wrapped by `params` are all optional and their
-             * presence/absence depends on `type`.
-             */
-            params: SharedStorageAccessParams;
-        }
-
-        /**
-         * A shared storage run or selectURL operation finished its execution.
-         * The following parameters are included in all events.
-         */
-        export interface SharedStorageWorkletOperationExecutionFinishedEvent {
-            /**
-             * Time that the operation finished.
-             */
-            finishedTime: Network.TimeSinceEpoch;
-            /**
-             * Time, in microseconds, from start of shared storage JS API call until
-             * end of operation execution in the worklet.
-             */
-            executionTime: integer;
-            /**
-             * Enum value indicating the Shared Storage API method invoked.
-             */
-            method: SharedStorageAccessMethod;
-            /**
-             * ID of the operation call.
-             */
-            operationId: string;
-            /**
-             * Hex representation of the DevTools token used as the TargetID for the
-             * associated shared storage worklet.
-             */
-            workletTargetId: Target.TargetID;
-            /**
-             * DevTools Frame Token for the primary frame tree's root.
-             */
-            mainFrameId: Page.FrameId;
-            /**
-             * Serialization of the origin owning the Shared Storage data.
-             */
-            ownerOrigin: string;
         }
 
         export interface StorageBucketCreatedOrUpdatedEvent {
@@ -21736,6 +21429,7 @@ export namespace Protocol {
              * Context sample rate.
              */
             sampleRate: number;
+            renderQuantumSize: number;
         }
 
         /**
@@ -21905,7 +21599,7 @@ export namespace Protocol {
 
         export type Ctap2Version = ('ctap2_0' | 'ctap2_1' | 'ctap2_2');
 
-        export type AuthenticatorTransport = ('usb' | 'nfc' | 'ble' | 'cable' | 'internal');
+        export type AuthenticatorTransport = ('usb' | 'nfc' | 'ble' | 'cable' | 'hybrid' | 'smart-card' | 'internal');
 
         export interface VirtualAuthenticatorOptions {
             protocol: AuthenticatorProtocol;
@@ -21959,6 +21653,13 @@ export namespace Protocol {
              */
             hasHmacSecretMc?: boolean;
             /**
+             * If set to true, the authenticator will support the cmtgKey (Credential
+             * Manager Trust Group Key) extension.
+             * https://github.com/w3c/webauthn/pull/2377
+             * Defaults to false.
+             */
+            hasCmtgKey?: boolean;
+            /**
              * If set to true, tests of user presence will succeed immediately.
              * Otherwise, they will not be resolved. Defaults to true.
              */
@@ -22000,11 +21701,12 @@ export namespace Protocol {
              */
             userHandle?: string;
             /**
-             * Signature counter. This is incremented by one for each successful
-             * assertion.
+             * Signature counter. Must be equal to or greater than -1.
+             * If -1, the credential won't have an associated signature counter, and
+             * every assertion operation will report a value of 0.
              * See https://w3c.github.io/webauthn/#signature-counter
              */
-            signCount: integer;
+            signCount: number;
             /**
              * The large blob associated with the credential.
              * See https://w3c.github.io/webauthn/#sctn-large-blob-extension (Encoded as a base64 string when passed over JSON)
@@ -22033,6 +21735,18 @@ export namespace Protocol {
              * https://w3c.github.io/webauthn/#dom-publickeycredentialuserentity-displayname
              */
             userDisplayName?: string;
+            /**
+             * The CMTG keys associated with the credential.
+             */
+            cmtgKeys?: string[];
+            /**
+             * The 0-based index of the active key in cmtgKeys.
+             */
+            activeCmtgKeyIndex?: integer;
+            /**
+             * If true, the authenticator will generate a new CMTG key on the next operation.
+             */
+            generateCmtgKeyOnNextOperation?: boolean;
         }
 
         export interface EnableRequest {
@@ -22123,6 +21837,15 @@ export namespace Protocol {
             credentialId: string;
             backupEligibility?: boolean;
             backupState?: boolean;
+            activeCmtgKeyIndex?: integer;
+            generateCmtgKeyOnNextOperation?: boolean;
+            /**
+             * Must be equal to or greater than -1.
+             * If -1, the signature counter is removed from the credential, and every
+             * assertion operation will report a value of 0.
+             * See https://w3c.github.io/webauthn/#signature-counter
+             */
+            signCount?: number;
         }
 
         /**
@@ -22177,6 +21900,10 @@ export namespace Protocol {
              * A hint indicating that the tool output may contain untrusted content, ex: UGC, 3rd party data.
              */
             untrustedContent?: boolean;
+            /**
+             * A hint indicating that executing the tool will result in consequential actions, ex: booking a flight, transferring money.
+             */
+            consequential?: boolean;
             /**
              * If the declarative tool was declared with the autosubmit attribute.
              */
