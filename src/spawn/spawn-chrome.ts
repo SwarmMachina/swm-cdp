@@ -1,13 +1,11 @@
 import emitDiagnostic from '../diagnostics.js'
-import ChromeFinder from '../finder/find-chrome.js'
+import findChrome from '../finder.js'
 import Browser from './browser.js'
 import normalizeOptions from './normalize-options.js'
 import ChromeProcess from './chrome-process.js'
 import getArguments from './get-arguments.js'
 import UserDataDirectory from './user-data-directory.js'
 import type { LaunchOptions, NormalizedLaunchOptions } from '../types.js'
-
-const chromeFinder = new ChromeFinder()
 
 function debug(options: NormalizedLaunchOptions, event: string, data: unknown): void {
   if (options.debugSpawn) {
@@ -48,7 +46,7 @@ export default function spawnChrome(options?: LaunchOptions): Browser {
   const launchOptions = normalizeOptions(options)
 
   if (!launchOptions.chromeExecutable) {
-    launchOptions.chromeExecutable = chromeFinder.find()
+    launchOptions.chromeExecutable = findChrome()
     debug(launchOptions, 'executable.found', launchOptions.chromeExecutable)
   }
 

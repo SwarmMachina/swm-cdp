@@ -307,6 +307,18 @@ Discovery targets accept an `http:`, `https:`, `ws:`, or `wss:` URL, `{ url }`, 
 
 The same functions and discovery types are available from `@swarmmachina/swm-cdp/discovery`.
 
+### Chrome executable discovery
+
+Find a local Chrome or Chromium executable without creating a CDP connection or starting a browser:
+
+```typescript
+import { findChrome } from '@swarmmachina/swm-cdp/finder'
+
+const chromeExecutable = findChrome()
+```
+
+`findChrome()` respects `CHROME_PATH` and `LIGHTHOUSE_CHROMIUM_PATH`, then checks the platform-specific installation locations. It returns an absolute executable path or throws `ChromeNotInstalledError`. The `ChromeFinder` class and finder error types are available from both the package root and `@swarmmachina/swm-cdp/finder`.
+
 ### Diagnostics
 
 Enabled diagnostics are written to `console` by default. Configure `logger` with a `LogSink` callback to receive

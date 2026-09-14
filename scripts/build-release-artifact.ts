@@ -12,7 +12,9 @@ const REQUIRED_FILES = [
   'dist/index.d.ts',
   'dist/index.js',
   'dist/discovery.d.ts',
-  'dist/discovery.js'
+  'dist/discovery.js',
+  'dist/finder.d.ts',
+  'dist/finder.js'
 ]
 const ALLOWED_ROOT_FILES = new Set(['LICENSE', 'README.md', 'package.json'])
 

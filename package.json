@@ -1,6 +1,6 @@
 {
   "name": "@swarmmachina/swm-cdp",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Low-level Chrome DevTools Protocol runtime for SwarmMachina.",
   "keywords": [
     "chrome",
@@ -35,6 +35,10 @@
     "./discovery": {
       "types": "./dist/discovery.d.ts",
       "import": "./dist/discovery.js"
+    },
+    "./finder": {
+      "types": "./dist/finder.d.ts",
+      "import": "./dist/finder.js"
     }
   },
   "files": [

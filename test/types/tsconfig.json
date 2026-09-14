@@ -5,7 +5,8 @@
     "noEmit": true,
     "paths": {
       "@swarmmachina/swm-cdp": ["../../src/index.ts"],
-      "@swarmmachina/swm-cdp/discovery": ["../../src/discovery.ts"]
+      "@swarmmachina/swm-cdp/discovery": ["../../src/discovery.ts"],
+      "@swarmmachina/swm-cdp/finder": ["../../src/finder.ts"]
     },
     "types": ["node"]
   },

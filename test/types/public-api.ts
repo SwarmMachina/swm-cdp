@@ -1,14 +1,18 @@
 import connect, {
   CdpError,
+  ChromeFinder,
+  ChromeNotInstalledError,
   closeTarget,
   type ConnectOptions,
   createTarget,
+  findChrome,
   list,
   type LogSink,
   spawnChrome,
   version
 } from '@swarmmachina/swm-cdp'
 import * as discovery from '@swarmmachina/swm-cdp/discovery'
+import * as finder from '@swarmmachina/swm-cdp/finder'
 
 const logSink: LogSink = (entry) => {
   entry.event.toUpperCase()
@@ -54,10 +58,14 @@ async function launcherConsumer(): Promise<void> {
 void consumer
 void launcherConsumer
 void CdpError
+void ChromeFinder
+void ChromeNotInstalledError
 void closeTarget
 void createTarget
+void findChrome
 void list
 void logSink
 void spawnChrome
 void version
 void discovery.list
+void finder.findChrome
